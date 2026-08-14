@@ -1,0 +1,18 @@
+@page { size: A4 portrait; margin: 15mm; }
+
+body { background: #fff; color: #000; font-size: 10pt; }
+.site-header, .loading-bar, .site-footer, .no-print, .toast, .law-modal, .reader-toolbar, .focus-reading-button { display: none !important; }
+main { width: 100%; margin: 0; }
+.view { display: none !important; padding: 0; }
+body.print-result #resultView { display: block !important; }
+.report-header { display: block; margin-bottom: 8mm; }
+.report-header h1 { font-size: 22pt; }
+.result-summary, .report-conditions, .result-details { border: 1px solid #777; border-radius: 0; box-shadow: none; }
+.result-summary { display: grid; grid-template-columns: 1.3fr repeat(3, 1fr); margin-bottom: 5mm; }
+.result-score { min-height: 28mm; background: #eee; color: #000; }
+.result-score strong { font-size: 34pt; }
+.summary-stat { min-height: 28mm; }
+.report-conditions { margin-bottom: 5mm; padding: 4mm; }
+.result-details { padding: 6mm; }
+.result-entry { break-inside: avoid; page-break-inside: avoid; }
+.result-entry p { line-height: 1.65; }

@@ -4,9 +4,25 @@
   var state = {
     rows: [],
     rowsById: {},
+    serverRows: [],
     ready: false,
     session: null,
-    lastConfig: null
+    lastConfig: null,
+    savedRelatedGroup: "all",
+    previewMode: false,
+    dataLabel: "R8db.csv",
+    editor: {
+      rows: [],
+      filename: "",
+      outputFilename: "",
+      nickname: "",
+      fileHandle: null,
+      currentId: null,
+      previousId: null,
+      isNew: false,
+      dirty: false,
+      pendingAction: null
+    }
   };
 
   var modeNames = {
@@ -64,7 +80,12 @@
     toastTimer = window.setTimeout(function () { toast.hidden = true; }, 3500);
   }
 
-  function showView(id) {
+  function activeViewId() {
+    var active = document.querySelector(".view.active");
+    return active ? active.id : "";
+  }
+
+  function showViewDirect(id) {
     var views = document.querySelectorAll(".view");
     var i;
     for (i = 0; i < views.length; i += 1) {
@@ -74,7 +95,19 @@
     if (id === "homeView") { renderHomeStats(); }
     if (id === "analysisView") { renderAnalysis(); }
     if (id === "setupView") { updateSetupSummary(); }
+    if (id === "editorView" && state.editor.rows.length) {
+      renderEditorRecordList();
+      window.setTimeout(resizeEditorTextareas, 0);
+    }
     window.scrollTo(0, 0);
+  }
+
+  function showView(id) {
+    if (activeViewId() === "editorView" && id !== "editorView" && state.editor.dirty) {
+      requestEditorAction(function () { showViewDirect(id); });
+      return;
+    }
+    showViewDirect(id);
   }
 
   function selectedMode() {
@@ -97,6 +130,7 @@
     return {
       mode: selectedMode(),
       category: byId("categorySelect").value,
+      relatedGroup: byId("relatedGroupSelect").value,
       importance: parseInt(byId("importanceSelect").value, 10),
       difficulty: byId("difficultySelect").value,
       order: byId("orderSelect").value,
@@ -113,6 +147,7 @@
     for (i = 0; i < state.rows.length; i += 1) {
       row = state.rows[i];
       if ((config.category === "all" || row.category === config.category) &&
+          (config.relatedGroup === "all" || row.category2 === config.relatedGroup) &&
           row.importance <= config.importance &&
           difficultyRank[row.difficulty] <= maxDifficulty) {
         result.push(row);
@@ -177,6 +212,7 @@
     radio = document.querySelector('input[name="mode"][value="' + saved.m + '"]');
     if (radio) { radio.checked = true; }
     setSelectValue("categorySelect", saved.g);
+    state.savedRelatedGroup = saved.r || "all";
     setSelectValue("importanceSelect", String(saved.i));
     setSelectValue("difficultySelect", saved.d);
     setSelectValue("orderSelect", saved.o);
@@ -193,6 +229,41 @@
         return;
       }
     }
+  }
+
+  function populateRelatedGroups(preferredValue) {
+    var select = byId("relatedGroupSelect");
+    var category = byId("categorySelect").value;
+    var seen = {};
+    var groups = [];
+    var option;
+    var i;
+    var group;
+    clear(select);
+    option = element("option", "", "すべて");
+    option.value = "all";
+    select.appendChild(option);
+    if (state.ready) {
+      for (i = 0; i < state.rows.length; i += 1) {
+        group = state.rows[i].category2;
+        if (group && (category === "all" || state.rows[i].category === category) && !seen[group]) {
+          seen[group] = true;
+          groups.push(group);
+        }
+      }
+      groups.sort(function (a, b) { return a.localeCompare(b, "ja"); });
+      for (i = 0; i < groups.length; i += 1) {
+        option = element("option", "", groups[i]);
+        option.value = groups[i];
+        select.appendChild(option);
+      }
+    }
+    setSelectValue("relatedGroupSelect", preferredValue || "all");
+  }
+
+  function categoryChanged() {
+    populateRelatedGroups("all");
+    updateSetupSummary();
   }
 
   function updateStartField() {
@@ -227,6 +298,7 @@
     byId("selectedModeName").textContent = modeNames[config.mode];
     byId("eligibleCount").textContent = state.ready ? eligible.length + "件" : "--件";
     byId("conditionCategory").textContent = config.category === "all" ? "すべて" : config.category;
+    byId("conditionRelatedGroup").textContent = config.relatedGroup === "all" ? "すべて" : config.relatedGroup;
     byId("conditionImportance").textContent = config.importance === 1 ? "1のみ" : "1～" + config.importance;
     byId("conditionDifficulty").textContent = config.difficulty === "初級" ? "初級のみ" : "初級～" + config.difficulty;
 
@@ -365,6 +437,7 @@
     clear(container);
     container.appendChild(element("span", "meta-badge", "ID " + row.id));
     container.appendChild(element("span", "meta-badge", row.category));
+    if (row.category2) { container.appendChild(element("span", "meta-badge related-group-badge", row.category2)); }
     container.appendChild(element("span", "meta-badge", row.difficulty));
     container.appendChild(element("span", "meta-badge", "重要度 " + row.importance));
   }
@@ -650,7 +723,8 @@
   }
 
   function rangeName(config) {
-    return (config.category === "all" ? "全カテゴリ" : config.category) + "／重要度1～" + config.importance + "／" +
+    var group = config.relatedGroup === "all" ? "" : "／" + config.relatedGroup;
+    return (config.category === "all" ? "全大分類" : config.category) + group + "／重要度1～" + config.importance + "／" +
       (config.difficulty === "初級" ? "初級" : "初級～" + config.difficulty);
   }
 
@@ -680,6 +754,7 @@
     addCondition(conditions, "学習方法", modeNames[session.config.mode]);
     addCondition(conditions, "対象", rangeName(session.config));
     addCondition(conditions, "出題順", orderName(session.config));
+    if (state.previewMode) { addCondition(conditions, "確認DB", state.dataLabel); }
     addCondition(conditions, "所要時間", elapsedText(session.startedAt, new Date()));
     byId("reportDate").textContent = formatDate(new Date());
 
@@ -873,11 +948,12 @@
   }
 
   function resetHistory() {
-    if (!window.confirm("正解数、不正解数、不得意問題、前回の設定をすべて消去します。よろしいですか？")) { return; }
+    var targetName = state.previewMode ? "ローカルDB確認履歴" : "学習履歴";
+    if (!window.confirm(targetName + "の正解数、不正解数、不得意問題、前回の設定をすべて消去します。よろしいですか？")) { return; }
     STIHistory.reset();
     renderHomeStats();
     renderAnalysis();
-    showToast("学習履歴を消去しました。");
+    showToast(targetName + "を消去しました。");
   }
 
   function printResults() {
@@ -897,6 +973,460 @@
     }
   }
 
+  function cloneRow(row) {
+    return {
+      id: row.id,
+      importance: row.importance,
+      difficulty: row.difficulty,
+      category1: row.category1 || row.category,
+      category2: row.category2 || "",
+      category: row.category1 || row.category,
+      original: row.original,
+      question: row.question,
+      explanation: row.explanation,
+      notes1: row.notes1 || "",
+      notes2: row.notes2 || "",
+      notes3: row.notes3 || "",
+      notes4: row.notes4 || "",
+      notes5: row.notes5 || ""
+    };
+  }
+
+  function cloneRows(rows) {
+    var result = [];
+    var i;
+    for (i = 0; i < rows.length; i += 1) { result.push(cloneRow(rows[i])); }
+    return result;
+  }
+
+  function editorFieldIds() {
+    return [
+      "editId", "editImportance", "editDifficulty", "editCategory1", "editCategory2",
+      "editOriginal", "editQuestion", "editExplanation", "editNotes2", "editNotes3",
+      "editNotes4", "editNotes5"
+    ];
+  }
+
+  function setEditorDirty(dirty) {
+    state.editor.dirty = !!dirty;
+    byId("unsavedBadge").hidden = !state.editor.dirty;
+  }
+
+  function currentEditorRow() {
+    var i;
+    for (i = 0; i < state.editor.rows.length; i += 1) {
+      if (state.editor.rows[i].id === state.editor.currentId) { return state.editor.rows[i]; }
+    }
+    return null;
+  }
+
+  function resizeEditorTextarea(textarea) {
+    if (!textarea) { return; }
+    textarea.style.height = "auto";
+    textarea.style.height = textarea.scrollHeight + "px";
+  }
+
+  function resizeEditorTextareas() {
+    if (byId("editorWorkspace").hidden || activeViewId() !== "editorView") { return; }
+    resizeEditorTextarea(byId("editOriginal"));
+    resizeEditorTextarea(byId("editQuestion"));
+    resizeEditorTextarea(byId("editExplanation"));
+  }
+
+  function fillEditorForm(row, isNew) {
+    byId("editId").value = row.id || "";
+    byId("editImportance").value = String(row.importance || 1);
+    byId("editDifficulty").value = row.difficulty || "初級";
+    byId("editCategory1").value = row.category1 || row.category || "";
+    byId("editCategory2").value = row.category2 || "";
+    byId("editOriginal").value = row.original || "";
+    byId("editQuestion").value = row.question || "";
+    byId("editExplanation").value = row.explanation || "";
+    byId("editNotes1").value = STILocalDb.dateStamp();
+    byId("editNotes2").value = row.notes2 && row.notes2 !== "-" ? row.notes2 : (state.editor.nickname || "");
+    byId("editNotes3").value = row.notes3 || "";
+    byId("editNotes4").value = row.notes4 || "";
+    byId("editNotes5").value = row.notes5 || "";
+    resizeEditorTextareas();
+    byId("recordEditorTitle").textContent = isNew ? "新しいレコード" : "ID " + row.id + "を編集";
+    byId("deleteRecordButton").disabled = !!isNew;
+    byId("deleteRecordButtonTop").disabled = !!isNew;
+    byId("recordEditorMessage").textContent = "";
+    setEditorDirty(!!isNew);
+  }
+
+  function editorSearchRows() {
+    var query = byId("editorSearch").value.replace(/^\s+|\s+$/g, "").toLowerCase();
+    var result = [];
+    var i;
+    var row;
+    var haystack;
+    for (i = 0; i < state.editor.rows.length; i += 1) {
+      row = state.editor.rows[i];
+      haystack = [row.id, row.category1, row.category2, row.original].join(" ").toLowerCase();
+      if (!query || haystack.indexOf(query) >= 0) { result.push(row); }
+    }
+    return result;
+  }
+
+  function renderEditorRecordList() {
+    var select = byId("editorRecordSelect");
+    var rows = editorSearchRows();
+    var option;
+    var i;
+    clear(select);
+    for (i = 0; i < rows.length; i += 1) {
+      option = element("option", "", rows[i].id + "｜" + (rows[i].category2 || rows[i].category1) + "｜" + shorten(rows[i].original, 28));
+      option.value = String(rows[i].id);
+      if (!state.editor.isNew && rows[i].id === state.editor.currentId) { option.selected = true; }
+      select.appendChild(option);
+    }
+    byId("editorRecordCount").textContent = rows.length.toLocaleString("ja-JP") + "件を表示／全" + state.editor.rows.length.toLocaleString("ja-JP") + "件";
+    updateEditorNavigation(rows);
+  }
+
+  function updateEditorNavigation(rows) {
+    var currentIndex = -1;
+    var i;
+    for (i = 0; i < rows.length; i += 1) {
+      if (rows[i].id === state.editor.currentId) { currentIndex = i; break; }
+    }
+    byId("previousRecordButton").disabled = state.editor.isNew || currentIndex <= 0;
+    byId("nextRecordButton").disabled = state.editor.isNew || currentIndex < 0 || currentIndex >= rows.length - 1;
+  }
+
+  function openEditorRecord(id) {
+    var row;
+    var parsedId = parseInt(id, 10);
+    var i;
+    for (i = 0; i < state.editor.rows.length; i += 1) {
+      if (state.editor.rows[i].id === parsedId) { row = state.editor.rows[i]; break; }
+    }
+    if (!row) { return; }
+    state.editor.currentId = row.id;
+    state.editor.previousId = null;
+    state.editor.isNew = false;
+    fillEditorForm(row, false);
+    renderEditorRecordList();
+  }
+
+  function requestEditorAction(action) {
+    if (!state.editor.dirty) { action(); return; }
+    state.editor.pendingAction = action;
+    byId("editorLeaveModal").hidden = false;
+    byId("continueEditingButton").focus();
+  }
+
+  function closeEditorLeaveModal() {
+    byId("editorLeaveModal").hidden = true;
+  }
+
+  function runPendingEditorAction() {
+    var action = state.editor.pendingAction;
+    state.editor.pendingAction = null;
+    closeEditorLeaveModal();
+    if (action) { action(); }
+  }
+
+  function addEditorRecord() {
+    var maxId = 0;
+    var i;
+    for (i = 0; i < state.editor.rows.length; i += 1) {
+      if (state.editor.rows[i].id > maxId) { maxId = state.editor.rows[i].id; }
+    }
+    state.editor.previousId = state.editor.currentId;
+    state.editor.currentId = null;
+    state.editor.isNew = true;
+    byId("editorSearch").value = "";
+    byId("editorRecordSelect").selectedIndex = -1;
+    fillEditorForm({ id: maxId + 1, importance: 1, difficulty: "初級", notes2: state.editor.nickname || "" }, true);
+    byId("editCategory1").focus();
+  }
+
+  function editorRowFromForm() {
+    var nickname = STILocalDb.validateNickname(byId("editNotes2").value);
+    var row = {
+      id: parseInt(byId("editId").value, 10),
+      importance: parseInt(byId("editImportance").value, 10),
+      difficulty: byId("editDifficulty").value,
+      category1: byId("editCategory1").value.replace(/^\s+|\s+$/g, ""),
+      category2: byId("editCategory2").value.replace(/^\s+|\s+$/g, ""),
+      original: byId("editOriginal").value.replace(/^\s+|\s+$/g, ""),
+      question: byId("editQuestion").value.replace(/^\s+|\s+$/g, ""),
+      explanation: byId("editExplanation").value.replace(/^\s+|\s+$/g, ""),
+      notes1: STILocalDb.dateStamp(),
+      notes2: nickname,
+      notes3: byId("editNotes3").value,
+      notes4: byId("editNotes4").value,
+      notes5: byId("editNotes5").value
+    };
+    row.category = row.category1;
+    return row;
+  }
+
+  function makeEditorCandidate(row) {
+    var result = [];
+    var replaced = false;
+    var i;
+    for (i = 0; i < state.editor.rows.length; i += 1) {
+      if (!state.editor.isNew && state.editor.rows[i].id === state.editor.currentId) {
+        result.push(row);
+        replaced = true;
+      } else {
+        result.push(cloneRow(state.editor.rows[i]));
+      }
+    }
+    if (!replaced) { result.push(row); }
+    result.sort(function (a, b) { return a.id - b.id; });
+    return result;
+  }
+
+  function downloadLocalCsv(text, filename) {
+    var blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+    var link;
+    var url;
+    if (window.navigator.msSaveOrOpenBlob) {
+      window.navigator.msSaveOrOpenBlob(blob, filename);
+      return;
+    }
+    url = window.URL.createObjectURL(blob);
+    link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.setTimeout(function () { window.URL.revokeObjectURL(url); }, 1000);
+  }
+
+  function writeCsvToHandle(handle, text, filename, onSuccess, onError) {
+    handle.createWritable().then(function (writable) {
+      return writable.write(text).then(function () { return writable.close(); });
+    }).then(function () {
+      state.editor.fileHandle = handle;
+      onSuccess(filename);
+    }).catch(onError);
+  }
+
+  function saveLocalCsv(text, filename, onSuccess, onError) {
+    var options;
+    function fallback(error) {
+      if (error && error.name === "AbortError") { onError(error); return; }
+      try {
+        state.editor.fileHandle = null;
+        downloadLocalCsv(text, filename);
+        onSuccess(filename);
+      } catch (downloadError) {
+        onError(downloadError);
+      }
+    }
+    if (state.editor.fileHandle && state.editor.outputFilename === filename) {
+      writeCsvToHandle(state.editor.fileHandle, text, filename, onSuccess, fallback);
+      return;
+    }
+    state.editor.fileHandle = null;
+    if (window.showSaveFilePicker) {
+      options = {
+        suggestedName: filename,
+        types: [{ description: "CSVファイル", accept: { "text/csv": [".csv"] } }]
+      };
+      window.showSaveFilePicker(options).then(function (handle) {
+        writeCsvToHandle(handle, text, filename, onSuccess, fallback);
+      }).catch(fallback);
+      return;
+    }
+    try {
+      downloadLocalCsv(text, filename);
+      onSuccess(filename);
+    } catch (error) {
+      onError(error);
+    }
+  }
+
+  function commitEditorRows(rows, currentId, filename, message) {
+    state.editor.rows = rows;
+    state.editor.outputFilename = filename;
+    state.editor.currentId = currentId;
+    state.editor.previousId = null;
+    state.editor.isNew = false;
+    setEditorDirty(false);
+    byId("editorFilename").textContent = filename;
+    byId("editorFileSummary").textContent = filename + "／" + rows.length.toLocaleString("ja-JP") + "件";
+    renderEditorRecordList();
+    if (currentId !== null) { openEditorRecord(currentId); }
+    if (state.previewMode) { activateData(cloneRows(rows), true, filename); }
+    showToast(message);
+  }
+
+  function saveEditorRecord(afterSave) {
+    var form = byId("recordEditorForm");
+    var row;
+    var rows;
+    var filename;
+    var text;
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      byId("recordEditorMessage").textContent = "必須項目を入力してください。";
+      return;
+    }
+    try {
+      row = editorRowFromForm();
+      rows = makeEditorCandidate(row);
+      filename = STILocalDb.outputFilename(row.notes2);
+      text = STILocalDb.serialize(rows);
+      STILocalDb.parse(text, filename);
+    } catch (error) {
+      byId("recordEditorMessage").textContent = error.message;
+      return;
+    }
+    byId("recordEditorMessage").textContent = "保存先を確認しています…";
+    saveLocalCsv(text, filename, function () {
+      state.editor.nickname = row.notes2;
+      byId("recordEditorMessage").textContent = "";
+      commitEditorRows(rows, row.id, filename, "ID " + row.id + "をローカルCSVへ保存しました。");
+      if (afterSave) { afterSave(); }
+    }, function (error) {
+      if (error && error.name === "AbortError") {
+        byId("recordEditorMessage").textContent = "保存がキャンセルされました。編集内容は未保存です。";
+      } else {
+        byId("recordEditorMessage").textContent = "保存できませんでした。保存先とブラウザーの権限を確認してください。";
+      }
+    });
+  }
+
+  function deleteEditorRecordNow() {
+    var current = currentEditorRow();
+    var nickname;
+    var rows = [];
+    var nextId = null;
+    var filename;
+    var text;
+    var i;
+    if (!current || state.editor.rows.length <= 1) {
+      byId("recordEditorMessage").textContent = "最後の1件は削除できません。";
+      return;
+    }
+    try { nickname = STILocalDb.validateNickname(byId("editNotes2").value); }
+    catch (error) { byId("recordEditorMessage").textContent = error.message; return; }
+    if (!window.confirm("ID " + current.id + "を削除しますか？この操作は保存先CSVへ反映されます。")) { return; }
+    for (i = 0; i < state.editor.rows.length; i += 1) {
+      if (state.editor.rows[i].id !== current.id) { rows.push(cloneRow(state.editor.rows[i])); }
+    }
+    nextId = rows[Math.min(state.editor.rows.indexOf(current), rows.length - 1)].id;
+    filename = STILocalDb.outputFilename(nickname);
+    text = STILocalDb.serialize(rows);
+    saveLocalCsv(text, filename, function () {
+      state.editor.nickname = nickname;
+      commitEditorRows(rows, nextId, filename, "ID " + current.id + "を削除して保存しました。");
+    }, function (error) {
+      byId("recordEditorMessage").textContent = error && error.name === "AbortError" ? "削除保存をキャンセルしました。" : "削除結果を保存できませんでした。";
+    });
+  }
+
+  function navigateEditorRecord(direction) {
+    var rows = editorSearchRows();
+    var index = -1;
+    var i;
+    for (i = 0; i < rows.length; i += 1) {
+      if (rows[i].id === state.editor.currentId) { index = i; break; }
+    }
+    if (index + direction >= 0 && index + direction < rows.length) {
+      openEditorRecord(rows[index + direction].id);
+    }
+  }
+
+  function discardEditorChanges() {
+    var row;
+    if (state.editor.isNew) {
+      state.editor.currentId = state.editor.previousId || (state.editor.rows.length ? state.editor.rows[0].id : null);
+      state.editor.previousId = null;
+      state.editor.isNew = false;
+    }
+    row = currentEditorRow();
+    if (row) { fillEditorForm(row, false); }
+    else { setEditorDirty(false); }
+    renderEditorRecordList();
+  }
+
+  function loadLocalCsvFile(file) {
+    var reader;
+    if (!file) { return; }
+    if (state.editor.dirty && !window.confirm("現在の未保存の編集を破棄して、別のCSVを読み込みますか？")) {
+      byId("localCsvInput").value = "";
+      return;
+    }
+    byId("editorMessage").textContent = "CSV形式を確認しています…";
+    reader = new FileReader();
+    reader.onload = function () {
+      var rows;
+      try {
+        if (String(reader.result).indexOf("\uFFFD") >= 0) {
+          throw new Error("UTF-8として読み取れない文字があります。ファイルは読み込まれませんでした。");
+        }
+        rows = STILocalDb.parse(reader.result, file.name);
+      } catch (error) {
+        byId("editorMessage").textContent = error.message;
+        byId("localCsvInput").value = "";
+        return;
+      }
+      if (state.previewMode) { restoreServerData(false); }
+      state.editor.rows = cloneRows(rows);
+      state.editor.filename = file.name;
+      state.editor.outputFilename = "";
+      state.editor.fileHandle = null;
+      state.editor.currentId = rows[0].id;
+      state.editor.previousId = null;
+      state.editor.isNew = false;
+      state.editor.nickname = rows[0].notes2 && rows[0].notes2 !== "-" ? rows[0].notes2 : "";
+      byId("editorWorkspace").hidden = false;
+      byId("editorFilename").textContent = file.name;
+      byId("editorFileSummary").textContent = file.name + "／" + rows.length.toLocaleString("ja-JP") + "件";
+      byId("editorMessage").textContent = "";
+      byId("localCsvInput").value = "";
+      byId("editorSearch").value = "";
+      openEditorRecord(rows[0].id);
+      showToast(rows.length.toLocaleString("ja-JP") + "件をローカルで読み込みました。");
+    };
+    reader.onerror = function () {
+      byId("editorMessage").textContent = "ファイルを読み取れませんでした。ファイルは読み込まれませんでした。";
+      byId("localCsvInput").value = "";
+    };
+    reader.readAsText(file, "UTF-8");
+  }
+
+  function beginLocalPreview() {
+    var filename = state.editor.outputFilename || state.editor.filename;
+    var rows;
+    try {
+      rows = STILocalDb.parse(STILocalDb.serialize(state.editor.rows), filename);
+    } catch (error) {
+      byId("editorMessage").textContent = error.message;
+      return;
+    }
+    state.session = null;
+    STIHistory.usePreview(true);
+    activateData(cloneRows(rows), true, filename);
+    applySavedSettings();
+    showViewDirect("setupView");
+    showToast("ローカルDB確認モードを開始しました。");
+  }
+
+  function restoreServerData(showEditor) {
+    state.session = null;
+    STIHistory.usePreview(false);
+    activateData(cloneRows(state.serverRows), false, "R8db.csv");
+    applySavedSettings();
+    if (showEditor) { showViewDirect("editorView"); }
+  }
+
+  function exitLocalPreview() {
+    if (!state.previewMode) { return; }
+    if (state.session && !window.confirm("ローカルDBの確認を終了して通常DBへ戻しますか？")) { return; }
+    restoreServerData(true);
+    showToast("通常のR8db.csvへ戻しました。");
+  }
+
   function setupEvents() {
     addEventToAll("[data-view]", "click", function (event) {
       showView(event.currentTarget.getAttribute("data-view"));
@@ -906,7 +1436,8 @@
       showView("setupView");
     });
     addEventToAll('input[name="mode"]', "change", modeRadioChanged);
-    addEventToAll("#categorySelect, #importanceSelect, #difficultySelect, #orderSelect", "change", settingChanged);
+    byId("categorySelect").addEventListener("change", categoryChanged);
+    addEventToAll("#relatedGroupSelect, #importanceSelect, #difficultySelect, #orderSelect", "change", settingChanged);
     byId("questionCount").addEventListener("input", updateSetupSummary);
     byId("startValueInput").addEventListener("input", updateSetupSummary);
     addEventToAll("[data-count]", "click", function (event) {
@@ -925,6 +1456,50 @@
       if (state.lastConfig) { startSession(state.lastConfig); }
     });
     byId("resetHistoryButton").addEventListener("click", resetHistory);
+    byId("localCsvInput").addEventListener("change", function (event) {
+      loadLocalCsvFile(event.target.files && event.target.files[0]);
+    });
+    byId("editorSearch").addEventListener("input", renderEditorRecordList);
+    byId("editorRecordSelect").addEventListener("change", function (event) {
+      var id = event.target.value;
+      renderEditorRecordList();
+      requestEditorAction(function () { openEditorRecord(id); });
+    });
+    byId("previousRecordButton").addEventListener("click", function () {
+      requestEditorAction(function () { navigateEditorRecord(-1); });
+    });
+    byId("nextRecordButton").addEventListener("click", function () {
+      requestEditorAction(function () { navigateEditorRecord(1); });
+    });
+    byId("addRecordButton").addEventListener("click", function () { requestEditorAction(addEditorRecord); });
+    byId("recordEditorForm").addEventListener("submit", function (event) {
+      event.preventDefault();
+      saveEditorRecord();
+    });
+    addEventToAll("[data-delete-record]", "click", function () {
+      requestEditorAction(deleteEditorRecordNow);
+    });
+    byId("saveRecordButtonTop").addEventListener("click", function () { saveEditorRecord(); });
+    byId("previewLocalDbButton").addEventListener("click", function () {
+      requestEditorAction(beginLocalPreview);
+    });
+    byId("exitPreviewButton").addEventListener("click", exitLocalPreview);
+    byId("saveAndLeaveButton").addEventListener("click", function () {
+      saveEditorRecord(runPendingEditorAction);
+    });
+    byId("discardAndLeaveButton").addEventListener("click", function () {
+      discardEditorChanges();
+      runPendingEditorAction();
+    });
+    byId("continueEditingButton").addEventListener("click", function () {
+      state.editor.pendingAction = null;
+      closeEditorLeaveModal();
+    });
+    addEventToAll("#recordEditorForm input:not([readonly]), #recordEditorForm select, #recordEditorForm textarea", "input", function (event) {
+      setEditorDirty(true);
+      byId("recordEditorMessage").textContent = "";
+      if (event.currentTarget.tagName.toLowerCase() === "textarea") { resizeEditorTextarea(event.currentTarget); }
+    });
     addEventToAll("[data-text-size]", "click", function (event) {
       applyTextSize(event.currentTarget.getAttribute("data-text-size"), true);
     });
@@ -938,22 +1513,87 @@
       }
     });
     window.addEventListener("afterprint", function () { document.body.classList.remove("print-result"); });
+    window.addEventListener("resize", resizeEditorTextareas);
+    window.addEventListener("beforeunload", function (event) {
+      if (!state.editor.dirty) { return; }
+      event.preventDefault();
+      event.returnValue = "";
+      return "";
+    });
   }
 
-  function dataLoaded(rows) {
+  function populateCategoryOptions() {
+    var select = byId("categorySelect");
+    var current = select.value;
+    var seen = {};
+    var names = [];
+    var option;
     var i;
+    clear(select);
+    option = element("option", "", "すべて");
+    option.value = "all";
+    select.appendChild(option);
+    for (i = 0; i < state.rows.length; i += 1) {
+      if (state.rows[i].category && !seen[state.rows[i].category]) {
+        seen[state.rows[i].category] = true;
+        names.push(state.rows[i].category);
+      }
+    }
+    names.sort(function (a, b) { return a.localeCompare(b, "ja"); });
+    for (i = 0; i < names.length; i += 1) {
+      option = element("option", "", names[i]);
+      option.value = names[i];
+      select.appendChild(option);
+    }
+    setSelectValue("categorySelect", current || "all");
+  }
+
+  function activateData(rows, preview, label) {
+    var i;
+    var groupNames = {};
+    var groupCount = 0;
+    var categories = {};
+    var categoryCount = 0;
     state.rows = rows;
+    state.rowsById = {};
+    state.previewMode = !!preview;
+    state.dataLabel = label || "R8db.csv";
     state.rows.sort(function (a, b) { return a.id - b.id; });
-    for (i = 0; i < state.rows.length; i += 1) { state.rowsById[state.rows[i].id] = state.rows[i]; }
+    for (i = 0; i < state.rows.length; i += 1) {
+      state.rowsById[state.rows[i].id] = state.rows[i];
+      if (state.rows[i].category && !categories[state.rows[i].category]) {
+        categories[state.rows[i].category] = true;
+        categoryCount += 1;
+      }
+      if (state.rows[i].category2 && !groupNames[state.rows[i].category2]) {
+        groupNames[state.rows[i].category2] = true;
+        groupCount += 1;
+      }
+    }
     state.ready = true;
-    setLoading(rows.length.toLocaleString("ja-JP") + "件の条文を利用できます", "ready");
-    byId("dataSummary").textContent = rows.length.toLocaleString("ja-JP") + "件・4カテゴリの条文を収録";
+    populateCategoryOptions();
+    populateRelatedGroups(state.savedRelatedGroup);
+    setLoading(preview ? "ローカルDB確認モード｜" + label + "｜" + rows.length.toLocaleString("ja-JP") + "件" : rows.length.toLocaleString("ja-JP") + "件の条文を利用できます", preview ? "preview" : "ready");
+    byId("exitPreviewButton").hidden = !preview;
+    byId("dataSummary").textContent = rows.length.toLocaleString("ja-JP") + "件・" + categoryCount + "大分類・" + groupCount + "関連法規グループを収録";
+    byId("analysisTitle").textContent = preview ? "ローカルDB確認分析" : "学習分析";
+    byId("resetHistoryButton").textContent = preview ? "確認履歴を消去" : "学習履歴を消去";
+    document.querySelector("#analysisView .eyebrow").textContent = preview ? "確認用Cookieに保存された記録" : "Cookieに保存された記録";
+    document.querySelector(".start-note").textContent = preview ? "確認結果は通常履歴とは別のCookieに保存されます。" : "学習結果はこのブラウザのCookieに保存されます。";
     byId("startButton").disabled = false;
     updateSetupSummary();
     renderAnalysis();
   }
 
+  function dataLoaded(rows) {
+    state.serverRows = cloneRows(rows);
+    if (state.previewMode) { return; }
+    STIHistory.usePreview(false);
+    activateData(cloneRows(rows), false, "R8db.csv");
+  }
+
   function dataFailed(error) {
+    if (state.previewMode) { return; }
     state.ready = false;
     setLoading(error.message + " サーバーから開いているか確認してください。", "error");
     byId("formMessage").textContent = "条文データを読み込めないため、学習を開始できません。";

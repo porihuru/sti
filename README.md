@@ -1,4 +1,4 @@
-# 条文学習室
+# NAF-CSM
 
 会計法規の正しい条文を閲覧し、4択問題と正誤問題で学習するサーバー配信用Webアプリです。
 
@@ -9,12 +9,14 @@
 - 異なる4条文から誤った条文を1つ選択
 - 1つの条文が正しいか誤っているかを判断
 - 回答後に正しい条文と `explanation` を表示
-- カテゴリ、重要度、難易度による絞り込み
+- 大分類、関連法規グループ、重要度、難易度による絞り込み
 - 連番、開始ID、絞り込み結果の開始位置、ランダム、不得意問題から出題
 - 1～200問の範囲で出題数を指定
 - Cookieによる正解数、不正解数、分類別成績、不得意問題の保存
 - 学習結果の印刷・PDF保存
 - 長い条文を読みやすくする文字サイズ切替と集中表示
+- ローカルCSVの形式検査、レコード単位の編集・追加・削除・保存
+- ローカルCSVを使った本アプリ同等の確認モード（確認履歴は別Cookie）
 - PC、タブレット、スマートフォンに応じたレスポンシブ表示
 
 ## 動作環境
@@ -35,6 +37,7 @@
 - npmなどによるサーバー上でのインストールやビルドは不要です
 - Cookieはアプリを配信するサーバーのドメインへ保存されます
 - PDFはEdge 95の印刷機能を使用するため、PDF生成サービスへの通信はありません
+- CSV編集ページで選択したファイルは端末内だけで処理し、サーバーへ送信しません
 
 インターネット接続された端末で事前に依存ファイルを取得する作業もありません。リポジトリのファイル一式を、USBメモリなど許可された方法でWebサーバーへ搬入できます。
 
@@ -64,7 +67,7 @@ db/R8db.csv
 
 1. VS Codeでこのフォルダーを開く
 2. 「実行とデバッグ」を開く
-3. 「条文学習室を起動（接続エラー回避）」を選択する
+3. 「NAF-CSMを起動（接続エラー回避）」を選択する
 4. F5キーを押す
 
 VS Codeが `server.js` を使って `http://127.0.0.1:8000/` を配信し、Edgeを通常モードで起動します。8000番ポートが使用中の場合は、8001番以降の空いているポートを自動的に使用します。VS Codeからブラウザーへデバッグ接続しないため、「ブラウザーにアタッチできません」というエラーを回避できます。停止するときはVS Codeのデバッグ停止ボタンを押してください。
@@ -85,6 +88,7 @@ node server.js
 - `sti_weak`: 不得意問題のIDと成績
 - `sti_settings`: 前回の出題条件
 - `sti_display`: 条文の文字サイズ
+- `sti_preview_summary`、`sti_preview_weak`、`sti_preview_settings`: ローカルDB確認モード専用の履歴
 
 Cookie容量を超えないよう、不得意問題は弱点度の高いものから最大160件まで保持します。全2,436問の回答履歴明細を保存する仕様ではありません。
 
@@ -97,10 +101,12 @@ Cookie容量を超えないよう、不得意問題は弱点度の高いもの�
 `db/R8db.csv` は以下の列を持ちます。
 
 ```text
-id,Importance,difficult,category,original,question,explanation
+id,Importance,difficult,category1,category2,original,question,explanation,notes1,notes2,notes3,notes4,notes5
 ```
 
-アプリ内では `Importance` を重要度、`difficult` を難易度として扱います。法令は改正されることがあるため、実務利用時には最新の法令と照合してください。
+アプリ内では `category1` を大分類、`category2` を関連法規グループ、`Importance` を重要度、`difficult` を難易度として扱います。`notes1`～`notes5` は内部情報として読み込み、画面には表示しません。旧形式の `category` 列にも対応しています。法令は改正されることがあるため、実務利用時には最新の法令と照合してください。
+
+CSV編集ページでは上記13列が同じ順序で並ぶUTF-8のCSVだけを読み込みます。保存時は`notes1`へ端末の日付、`notes2`へ必須入力したニックネームを設定し、`YYYY_MM_DD_ニックネーム_R8db.csv`として端末内へ保存します。元のCSVが自動的にサーバーへ送信・上書きされることはありません。
 
 ## 確認
 
@@ -108,6 +114,8 @@ Node.jsが利用できる開発環境では、CSVの構造を次のコマンド�
 
 ```powershell
 node tests/csv-parser.test.js
+node tests/local-db.test.js
+node tests/editor-ui.test.js
 node tests/history-cookie.test.js
 node tests/http-smoke.test.js
 node tests/offline-assets.test.js

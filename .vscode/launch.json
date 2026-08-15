@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "条文学習室を起動（接続エラー回避）",
+      "name": "NAF-CSMを起動（接続エラー回避）",
       "type": "pwa-node",
       "request": "launch",
       "program": "${workspaceFolder}/server.js",

@@ -8,10 +8,15 @@
   var COOKIE_DAYS = 365;
   var MAX_WEAK_ITEMS = 160;
   var MAX_WEAK_LENGTH = 3000;
+  var previewMode = false;
 
   var categoryIndex = { "会計": 0, "給与": 1, "旅費": 2, "契約": 3 };
   var difficultyIndex = { "初級": 0, "中級": 1, "上級": 2 };
   var modeIndex = { trueFalse: 0, fourCorrect: 1, fourWrong: 2 };
+
+  function historyCookieName(name) {
+    return previewMode ? "sti_preview_" + name.substring(4) : name;
+  }
 
   function emptySummary() {
     return {
@@ -96,12 +101,12 @@
   }
 
   function loadSummary() {
-    var summary = safeParse(getCookie(SUMMARY_COOKIE), null);
+    var summary = safeParse(getCookie(historyCookieName(SUMMARY_COOKIE)), null);
     return isValidSummary(summary) ? summary : emptySummary();
   }
 
   function parseWeak() {
-    var value = getCookie(WEAK_COOKIE);
+    var value = getCookie(historyCookieName(WEAK_COOKIE));
     var result = {};
     var items;
     var i;
@@ -186,8 +191,8 @@
       }
     }
 
-    setCookie(SUMMARY_COOKIE, JSON.stringify(summary));
-    setCookie(WEAK_COOKIE, serializeWeak(weak));
+    setCookie(historyCookieName(SUMMARY_COOKIE), JSON.stringify(summary));
+    setCookie(historyCookieName(WEAK_COOKIE), serializeWeak(weak));
   }
 
   function getWeakList() {
@@ -212,17 +217,18 @@
     var compact = {
       m: settings.mode,
       g: settings.category,
+      r: settings.relatedGroup || "all",
       i: settings.importance,
       d: settings.difficulty,
       o: settings.order,
       n: settings.count,
       s: settings.startValue
     };
-    setCookie(SETTINGS_COOKIE, JSON.stringify(compact));
+    setCookie(historyCookieName(SETTINGS_COOKIE), JSON.stringify(compact));
   }
 
   function loadSettings() {
-    return safeParse(getCookie(SETTINGS_COOKIE), null);
+    return safeParse(getCookie(historyCookieName(SETTINGS_COOKIE)), null);
   }
 
   function saveDisplay(size) {
@@ -237,9 +243,17 @@
   }
 
   function reset() {
-    deleteCookie(SUMMARY_COOKIE);
-    deleteCookie(WEAK_COOKIE);
-    deleteCookie(SETTINGS_COOKIE);
+    deleteCookie(historyCookieName(SUMMARY_COOKIE));
+    deleteCookie(historyCookieName(WEAK_COOKIE));
+    deleteCookie(historyCookieName(SETTINGS_COOKIE));
+  }
+
+  function usePreview(enabled) {
+    previewMode = !!enabled;
+  }
+
+  function isPreview() {
+    return previewMode;
   }
 
   function cookiesAvailable() {
@@ -261,6 +275,8 @@
     saveDisplay: saveDisplay,
     loadDisplay: loadDisplay,
     reset: reset,
+    usePreview: usePreview,
+    isPreview: isPreview,
     cookiesAvailable: cookiesAvailable
   };
 }(this));

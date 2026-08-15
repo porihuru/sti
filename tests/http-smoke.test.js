@@ -44,7 +44,7 @@ server.listen(0, "127.0.0.1", function () {
   Promise.all([request(port, "/index.html"), request(port, "/db/R8db.csv")])
     .then(function (responses) {
       assert.strictEqual(responses[0].status, 200);
-      assert.ok(responses[0].body.toString("utf8").indexOf("条文学習室") >= 0);
+      assert.ok(responses[0].body.toString("utf8").indexOf("NAF-CSM") >= 0);
       assert.strictEqual(responses[1].status, 200);
       assert.ok(responses[1].body.length > 3000000);
       console.log("HTTP smoke test passed");

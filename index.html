@@ -5,10 +5,11 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="会計法規の正しい条文を読み、4択問題と正誤問題で学習するアプリです。">
-  <title>条文学習室 | 会計法規トレーニング</title>
+  <title>NAF-CSM | 会計法規トレーニング</title>
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/print.css" media="print">
   <script defer src="js/csv.js"></script>
+  <script defer src="js/local-db.js"></script>
   <script defer src="js/history.js"></script>
   <script defer src="js/app.js"></script>
 </head>
@@ -18,7 +19,7 @@
       <button class="brand-button" id="homeButton" type="button" aria-label="ホームへ戻る">
         <span class="brand-mark" aria-hidden="true">条</span>
         <span>
-          <span class="brand-title">条文学習室</span>
+          <span class="brand-title">NAF-CSM</span>
           <span class="brand-subtitle">会計法規トレーニング</span>
         </span>
       </button>
@@ -26,12 +27,14 @@
         <button type="button" data-view="homeView">ホーム</button>
         <button type="button" data-view="setupView">学習を始める</button>
         <button type="button" data-view="analysisView">学習分析</button>
+        <button type="button" data-view="editorView">CSV編集</button>
       </nav>
     </header>
 
     <div class="loading-bar" id="loadingBar" role="status" aria-live="polite">
       <span class="loading-dot" aria-hidden="true"></span>
       <span id="loadingText">条文データを読み込んでいます…</span>
+      <button class="preview-exit-button" id="exitPreviewButton" type="button" hidden>通常DBへ戻す</button>
     </div>
 
     <main id="mainContent">
@@ -48,15 +51,19 @@
           </div>
           <aside class="today-card" aria-label="現在の学習状況">
             <p class="card-kicker">これまでの記録</p>
-            <div class="score-ring" id="homeScoreRing">
-              <span id="homeRate">--</span><small>%</small>
+            <div class="record-layout">
+              <div class="score-summary">
+                <div class="score-ring" id="homeScoreRing">
+                  <span id="homeRate">--</span><small>%</small>
+                </div>
+                <p class="score-caption">累計正答率</p>
+              </div>
+              <dl class="mini-stats">
+                <div><dt>回答</dt><dd id="homeTotal">0</dd></div>
+                <div><dt>正解</dt><dd id="homeCorrect">0</dd></div>
+                <div><dt>不得意</dt><dd id="homeWeak">0</dd></div>
+              </dl>
             </div>
-            <p class="score-caption">累計正答率</p>
-            <dl class="mini-stats">
-              <div><dt>回答</dt><dd id="homeTotal">0</dd></div>
-              <div><dt>正解</dt><dd id="homeCorrect">0</dd></div>
-              <div><dt>不得意</dt><dd id="homeWeak">0</dd></div>
-            </dl>
           </aside>
         </div>
 
@@ -133,15 +140,21 @@
 
             <div class="form-section">
               <h2><span>2</span> 対象範囲</h2>
-              <div class="form-grid">
+              <div class="form-grid range-grid">
                 <label class="field">
-                  <span>カテゴリ</span>
+                  <span>大分類</span>
                   <select id="categorySelect">
                     <option value="all">すべて</option>
                     <option value="会計">会計</option>
                     <option value="給与">給与</option>
                     <option value="旅費">旅費</option>
                     <option value="契約">契約</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>関連法規グループ</span>
+                  <select id="relatedGroupSelect">
+                    <option value="all">すべて</option>
                   </select>
                 </label>
                 <label class="field">
@@ -201,7 +214,8 @@
             <h2 id="selectedModeName">正しい条文を選ぶ</h2>
             <dl class="condition-list">
               <div><dt>対象件数</dt><dd id="eligibleCount">--件</dd></div>
-              <div><dt>カテゴリ</dt><dd id="conditionCategory">すべて</dd></div>
+              <div><dt>大分類</dt><dd id="conditionCategory">すべて</dd></div>
+              <div><dt>関連法規</dt><dd id="conditionRelatedGroup">すべて</dd></div>
               <div><dt>重要度</dt><dd id="conditionImportance">1～4</dd></div>
               <div><dt>難易度</dt><dd id="conditionDifficulty">初級～上級</dd></div>
             </dl>
@@ -210,6 +224,102 @@
             <p class="start-note">学習結果はこのブラウザのCookieに保存されます。</p>
           </aside>
         </form>
+      </section>
+
+      <section class="view" id="editorView" aria-labelledby="editorTitle">
+        <div class="page-heading editor-heading">
+          <div>
+            <p class="eyebrow">端末内だけで処理</p>
+            <h1 id="editorTitle">R8db.csv編集</h1>
+            <p>ローカルCSVはサーバーへ送信されません。形式が一致するファイルだけを読み込みます。</p>
+          </div>
+          <span class="local-only-badge">ローカル限定</span>
+        </div>
+
+        <section class="editor-file-card">
+          <div>
+            <h2>編集するCSVを選択</h2>
+            <p>必要な13列を持つUTF-8のCSVを選択してください。</p>
+          </div>
+          <label class="button secondary file-picker-button">
+            CSVファイルを選択
+            <input id="localCsvInput" type="file" accept=".csv,text/csv">
+          </label>
+          <div class="editor-file-summary" id="editorFileSummary">ファイルは選択されていません。</div>
+          <p class="editor-message" id="editorMessage" role="alert"></p>
+        </section>
+
+        <div id="editorWorkspace" hidden>
+          <div class="editor-toolbar">
+            <div>
+              <span class="editor-toolbar-label">編集中のファイル</span>
+              <strong id="editorFilename">-</strong>
+            </div>
+            <div class="editor-toolbar-actions">
+              <button class="button secondary" id="addRecordButton" type="button">新しいレコードを追加</button>
+              <button class="button primary" id="previewLocalDbButton" type="button">このDBで動作確認</button>
+            </div>
+          </div>
+
+          <div class="editor-layout">
+            <aside class="editor-records">
+              <label class="field">
+                <span>レコードを検索</span>
+                <input id="editorSearch" type="search" placeholder="ID・分類・条文">
+              </label>
+              <p class="record-count" id="editorRecordCount"></p>
+              <select class="record-select" id="editorRecordSelect" size="16" aria-label="編集するレコード"></select>
+              <div class="record-navigation">
+                <button class="button quiet" id="previousRecordButton" type="button">前へ</button>
+                <button class="button quiet" id="nextRecordButton" type="button">次へ</button>
+              </div>
+            </aside>
+
+            <form class="record-editor" id="recordEditorForm">
+              <div class="record-editor-heading">
+                <div>
+                  <p class="card-kicker">1レコードずつ保存</p>
+                  <h2 id="recordEditorTitle">レコード編集</h2>
+                </div>
+                <div class="record-editor-heading-side">
+                  <span class="unsaved-badge" id="unsavedBadge" hidden>未保存</span>
+                  <div class="record-editor-heading-actions">
+                    <button class="button danger" id="deleteRecordButtonTop" type="button" data-delete-record>このレコードを削除</button>
+                    <button class="button primary" id="saveRecordButtonTop" type="button" data-save-record>このレコードを保存</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="editor-fields compact-editor-fields">
+                <label class="field"><span>id</span><input id="editId" type="number" min="1" inputmode="numeric" required></label>
+                <label class="field"><span>Importance</span><select id="editImportance" required><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
+                <label class="field"><span>difficult</span><select id="editDifficulty" required><option value="初級">初級</option><option value="中級">中級</option><option value="上級">上級</option></select></label>
+                <label class="field"><span>category1（大分類）</span><select id="editCategory1" required><option value="会計">会計</option><option value="給与">給与</option><option value="旅費">旅費</option><option value="契約">契約</option></select></label>
+                <label class="field"><span>category2（関連法規グループ）</span><input id="editCategory2" type="text" required></label>
+              </div>
+
+              <div class="editor-fields long-editor-fields">
+                <label class="field"><span>original（正しい条文）</span><textarea id="editOriginal" rows="1" required></textarea></label>
+                <label class="field"><span>question（問題用条文）</span><textarea id="editQuestion" rows="1" required></textarea></label>
+                <label class="field"><span>explanation（変更箇所と説明）</span><textarea id="editExplanation" rows="1" required></textarea></label>
+              </div>
+
+              <div class="editor-fields notes-editor-fields">
+                <label class="field"><span>notes1（保存日・自動入力）</span><input id="editNotes1" type="text" readonly></label>
+                <label class="field"><span>notes2（ニックネーム・必須）</span><input id="editNotes2" type="text" maxlength="40" required></label>
+                <label class="field"><span>notes3</span><input id="editNotes3" type="text"></label>
+                <label class="field"><span>notes4</span><input id="editNotes4" type="text"></label>
+                <label class="field"><span>notes5</span><input id="editNotes5" type="text"></label>
+              </div>
+
+              <p class="editor-message" id="recordEditorMessage" role="alert"></p>
+              <div class="record-editor-actions">
+                <button class="button danger" id="deleteRecordButton" type="button" data-delete-record>このレコードを削除</button>
+                <button class="button primary" id="saveRecordButton" type="submit">このレコードを保存</button>
+              </div>
+            </form>
+          </div>
+        </div>
       </section>
 
       <section class="view" id="learnView" aria-labelledby="learnTitle">
@@ -288,7 +398,7 @@
     </main>
 
     <footer class="site-footer">
-      <p>条文学習室</p>
+      <p>NAF-CSM</p>
       <p>法令の内容はデータ作成時点のものです。実務では最新の法令をご確認ください。</p>
     </footer>
   </div>
@@ -305,6 +415,18 @@
       </header>
       <div class="law-modal-scroll">
         <p class="law-modal-text" id="lawModalText"></p>
+      </div>
+    </div>
+  </div>
+  <div class="editor-leave-modal" id="editorLeaveModal" role="dialog" aria-modal="true" aria-labelledby="editorLeaveTitle" hidden>
+    <div class="editor-leave-panel" role="document">
+      <p class="eyebrow">未保存の編集があります</p>
+      <h2 id="editorLeaveTitle">移動する前に確認してください</h2>
+      <p>現在のレコードを保存するか、変更を破棄してから移動してください。</p>
+      <div class="editor-leave-actions">
+        <button class="button primary" id="saveAndLeaveButton" type="button">保存して移動</button>
+        <button class="button danger" id="discardAndLeaveButton" type="button">破棄して移動</button>
+        <button class="button quiet" id="continueEditingButton" type="button">編集を続ける</button>
       </div>
     </div>
   </div>

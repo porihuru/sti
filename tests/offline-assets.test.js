@@ -13,6 +13,7 @@ var files = [
   "css/style.css",
   "css/print.css",
   "js/csv.js",
+  "js/local-db.js",
   "js/history.js",
   "js/app.js"
 ];

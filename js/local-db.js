@@ -134,14 +134,7 @@
     var value = trim(nickname);
     if (!value) { throw new Error("ニックネームを入力してください。"); }
     if (value.length > 40) { throw new Error("ニックネームは40文字以内で入力してください。"); }
-    if (/[<>:\"\/\\|?*]/.test(value) || /[\. ]$/.test(value)) {
-      throw new Error("ニックネームにファイル名として使用できない文字が含まれています。");
-    }
     return value;
-  }
-
-  function outputFilename(nickname, date) {
-    return dateStamp(date) + "_" + validateNickname(nickname) + "_R8db.csv";
   }
 
   root.STILocalDb = {
@@ -149,8 +142,7 @@
     parse: parse,
     serialize: serialize,
     dateStamp: dateStamp,
-    validateNickname: validateNickname,
-    outputFilename: outputFilename
+    validateNickname: validateNickname
   };
 
   if (typeof module !== "undefined" && module.exports) {

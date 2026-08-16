@@ -1181,25 +1181,6 @@
     return result;
   }
 
-  function downloadLocalCsv(text, filename) {
-    var blob = new Blob([text], { type: "text/csv;charset=utf-8" });
-    var link;
-    var url;
-    if (window.navigator.msSaveOrOpenBlob) {
-      window.navigator.msSaveOrOpenBlob(blob, filename);
-      return;
-    }
-    url = window.URL.createObjectURL(blob);
-    link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.style.display = "none";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.setTimeout(function () { window.URL.revokeObjectURL(url); }, 1000);
-  }
-
   function writeCsvToHandle(handle, text, filename, onSuccess, onError) {
     handle.createWritable().then(function (writable) {
       return writable.write(text).then(function () { return writable.close(); });
@@ -1209,39 +1190,29 @@
     }).catch(onError);
   }
 
-  function saveLocalCsv(text, filename, onSuccess, onError) {
-    var options;
-    function fallback(error) {
-      if (error && error.name === "AbortError") { onError(error); return; }
-      try {
-        state.editor.fileHandle = null;
-        downloadLocalCsv(text, filename);
-        onSuccess(filename);
-      } catch (downloadError) {
-        onError(downloadError);
-      }
-    }
-    if (state.editor.fileHandle && state.editor.outputFilename === filename) {
-      writeCsvToHandle(state.editor.fileHandle, text, filename, onSuccess, fallback);
+  function requestReadWritePermission(handle, onSuccess, onError) {
+    var options = { mode: "readwrite" };
+    if (!handle || !handle.requestPermission || !handle.queryPermission) {
+      onError(new Error("このブラウザーではCSVへの書き込み権限を取得できません。"));
       return;
     }
-    state.editor.fileHandle = null;
-    if (window.showSaveFilePicker) {
-      options = {
-        suggestedName: filename,
-        types: [{ description: "CSVファイル", accept: { "text/csv": [".csv"] } }]
-      };
-      window.showSaveFilePicker(options).then(function (handle) {
-        writeCsvToHandle(handle, text, filename, onSuccess, fallback);
-      }).catch(fallback);
+    handle.queryPermission(options).then(function (permission) {
+      if (permission === "granted") { onSuccess(); return; }
+      return handle.requestPermission(options).then(function (requested) {
+        if (requested === "granted") { onSuccess(); return; }
+        onError(new Error("CSVへの書き込みが許可されませんでした。"));
+      });
+    }).catch(onError);
+  }
+
+  function overwriteLocalCsv(text, filename, onSuccess, onError) {
+    if (!state.editor.fileHandle) {
+      onError(new Error("書き込み可能なCSVが開かれていません。"));
       return;
     }
-    try {
-      downloadLocalCsv(text, filename);
-      onSuccess(filename);
-    } catch (error) {
-      onError(error);
-    }
+    requestReadWritePermission(state.editor.fileHandle, function () {
+      writeCsvToHandle(state.editor.fileHandle, text, filename, onSuccess, onError);
+    }, onError);
   }
 
   function commitEditorRows(rows, currentId, filename, message) {
@@ -1273,24 +1244,24 @@
     try {
       row = editorRowFromForm();
       rows = makeEditorCandidate(row);
-      filename = STILocalDb.outputFilename(row.notes2);
+      filename = state.editor.filename;
       text = STILocalDb.serialize(rows);
       STILocalDb.parse(text, filename);
     } catch (error) {
       byId("recordEditorMessage").textContent = error.message;
       return;
     }
-    byId("recordEditorMessage").textContent = "保存先を確認しています…";
-    saveLocalCsv(text, filename, function () {
+    byId("recordEditorMessage").textContent = "CSVを更新しています…";
+    overwriteLocalCsv(text, filename, function () {
       state.editor.nickname = row.notes2;
       byId("recordEditorMessage").textContent = "";
-      commitEditorRows(rows, row.id, filename, "ID " + row.id + "をローカルCSVへ保存しました。");
+      commitEditorRows(rows, row.id, filename, "ID " + row.id + "をCSVへ反映しました。");
       if (afterSave) { afterSave(); }
     }, function (error) {
       if (error && error.name === "AbortError") {
-        byId("recordEditorMessage").textContent = "保存がキャンセルされました。編集内容は未保存です。";
+        byId("recordEditorMessage").textContent = "更新がキャンセルされました。編集内容は未保存です。";
       } else {
-        byId("recordEditorMessage").textContent = "保存できませんでした。保存先とブラウザーの権限を確認してください。";
+        byId("recordEditorMessage").textContent = "CSVを更新できませんでした。Edgeのファイル書き込み権限を確認してください。";
       }
     });
   }
@@ -1314,9 +1285,9 @@
       if (state.editor.rows[i].id !== current.id) { rows.push(cloneRow(state.editor.rows[i])); }
     }
     nextId = rows[Math.min(state.editor.rows.indexOf(current), rows.length - 1)].id;
-    filename = STILocalDb.outputFilename(nickname);
+    filename = state.editor.filename;
     text = STILocalDb.serialize(rows);
-    saveLocalCsv(text, filename, function () {
+    overwriteLocalCsv(text, filename, function () {
       state.editor.nickname = nickname;
       commitEditorRows(rows, nextId, filename, "ID " + current.id + "を削除して保存しました。");
     }, function (error) {
@@ -1349,13 +1320,9 @@
     renderEditorRecordList();
   }
 
-  function loadLocalCsvFile(file) {
+  function loadLocalCsvFile(file, handle) {
     var reader;
     if (!file) { return; }
-    if (state.editor.dirty && !window.confirm("現在の未保存の編集を破棄して、別のCSVを読み込みますか？")) {
-      byId("localCsvInput").value = "";
-      return;
-    }
     byId("editorMessage").textContent = "CSV形式を確認しています…";
     reader = new FileReader();
     reader.onload = function () {
@@ -1367,14 +1334,13 @@
         rows = STILocalDb.parse(reader.result, file.name);
       } catch (error) {
         byId("editorMessage").textContent = error.message;
-        byId("localCsvInput").value = "";
         return;
       }
       if (state.previewMode) { restoreServerData(false); }
       state.editor.rows = cloneRows(rows);
       state.editor.filename = file.name;
-      state.editor.outputFilename = "";
-      state.editor.fileHandle = null;
+      state.editor.outputFilename = file.name;
+      state.editor.fileHandle = handle;
       state.editor.currentId = rows[0].id;
       state.editor.previousId = null;
       state.editor.isNew = false;
@@ -1383,16 +1349,54 @@
       byId("editorFilename").textContent = file.name;
       byId("editorFileSummary").textContent = file.name + "／" + rows.length.toLocaleString("ja-JP") + "件";
       byId("editorMessage").textContent = "";
-      byId("localCsvInput").value = "";
       byId("editorSearch").value = "";
       openEditorRecord(rows[0].id);
       showToast(rows.length.toLocaleString("ja-JP") + "件をローカルで読み込みました。");
     };
     reader.onerror = function () {
       byId("editorMessage").textContent = "ファイルを読み取れませんでした。ファイルは読み込まれませんでした。";
-      byId("localCsvInput").value = "";
     };
     reader.readAsText(file, "UTF-8");
+  }
+
+  function directFileEditingAvailable() {
+    return !!(window.isSecureContext && window.showOpenFilePicker);
+  }
+
+  function openLocalCsvPicker() {
+    var options;
+    if (!directFileEditingAvailable()) {
+      byId("editorMessage").textContent = "この環境ではCSVを直接更新できません。Windows版Edge 95以上で、localhostまたはHTTPSから開いてください。";
+      return;
+    }
+    options = {
+      multiple: false,
+      types: [{ description: "R8db CSV", accept: { "text/csv": [".csv"] } }],
+      excludeAcceptAllOption: true
+    };
+    window.showOpenFilePicker(options).then(function (handles) {
+      var handle = handles && handles[0];
+      if (!handle) { return; }
+      requestReadWritePermission(handle, function () {
+        handle.getFile().then(function (file) { loadLocalCsvFile(file, handle); }).catch(function () {
+          byId("editorMessage").textContent = "CSVファイルを読み取れませんでした。";
+        });
+      }, function () {
+        byId("editorMessage").textContent = "CSVへの読み書きが許可されませんでした。ファイルは読み込まれませんでした。";
+      });
+    }).catch(function (error) {
+      if (!error || error.name !== "AbortError") {
+        byId("editorMessage").textContent = "CSVファイルを開けませんでした。";
+      }
+    });
+  }
+
+  function updateEditorCapability() {
+    var available = directFileEditingAvailable();
+    byId("openLocalCsvButton").disabled = !available;
+    if (!available) {
+      byId("editorMessage").textContent = "CSV直接編集はWindows版Edge 95以上のlocalhostまたはHTTPS環境で利用できます。";
+    }
   }
 
   function beginLocalPreview() {
@@ -1456,8 +1460,8 @@
       if (state.lastConfig) { startSession(state.lastConfig); }
     });
     byId("resetHistoryButton").addEventListener("click", resetHistory);
-    byId("localCsvInput").addEventListener("change", function (event) {
-      loadLocalCsvFile(event.target.files && event.target.files[0]);
+    byId("openLocalCsvButton").addEventListener("click", function () {
+      requestEditorAction(openLocalCsvPicker);
     });
     byId("editorSearch").addEventListener("input", renderEditorRecordList);
     byId("editorRecordSelect").addEventListener("change", function (event) {
@@ -1602,6 +1606,7 @@
 
   function init() {
     setupEvents();
+    updateEditorCapability();
     applyTextSize(STIHistory.loadDisplay(), false);
     applySavedSettings();
     updateSetupSummary();

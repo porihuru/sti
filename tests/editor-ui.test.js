@@ -21,7 +21,7 @@ while ((match = byIdPattern.exec(app)) !== null) {
 }
 
 [
-  "editorView", "localCsvInput", "editorWorkspace", "recordEditorForm",
+  "editorView", "openLocalCsvButton", "editorWorkspace", "recordEditorForm",
   "saveRecordButton", "deleteRecordButton", "addRecordButton",
   "saveRecordButtonTop", "deleteRecordButtonTop", "previewLocalDbButton",
   "exitPreviewButton", "editorLeaveModal"
@@ -31,7 +31,10 @@ while ((match = byIdPattern.exec(app)) !== null) {
 
 assert.ok(html.indexOf('src="js/csv.js"') < html.indexOf('src="js/local-db.js"'), "CSVパーサーより先にローカルDB機能が読み込まれています");
 assert.ok(html.indexOf('src="js/local-db.js"') < html.indexOf('src="js/app.js"'), "アプリより後にローカルDB機能が読み込まれています");
-assert.ok(app.indexOf("new FileReader()") >= 0, "ローカルファイル読み込みが実装されていません");
+assert.ok(app.indexOf("window.showOpenFilePicker") >= 0, "書き込み可能なローカルファイル読み込みが実装されていません");
+assert.ok(app.indexOf("window.showSaveFilePicker") < 0, "別名保存処理が残っています");
+assert.ok(app.indexOf("downloadLocalCsv") < 0, "CSVダウンロード処理が残っています");
+assert.ok(app.indexOf("createWritable()") >= 0, "選択したCSVの直接更新が実装されていません");
 assert.ok(app.indexOf("STIHistory.usePreview(true)") >= 0, "確認履歴の分離が実装されていません");
 assert.ok(app.indexOf("function resizeEditorTextarea") >= 0, "長文欄の高さ自動調整が実装されていません");
 assert.ok(/id="editOriginal" rows="1"/.test(html), "original欄が最小の高さから始まりません");

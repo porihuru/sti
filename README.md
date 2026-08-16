@@ -106,7 +106,7 @@ id,Importance,difficult,category1,category2,original,question,explanation,notes1
 
 アプリ内では `category1` を大分類、`category2` を関連法規グループ、`Importance` を重要度、`difficult` を難易度として扱います。`notes1`～`notes5` は内部情報として読み込み、画面には表示しません。旧形式の `category` 列にも対応しています。法令は改正されることがあるため、実務利用時には最新の法令と照合してください。
 
-CSV編集ページでは上記13列が同じ順序で並ぶUTF-8のCSVだけを読み込みます。保存時は`notes1`へ端末の日付、`notes2`へ必須入力したニックネームを設定し、`YYYY_MM_DD_ニックネーム_R8db.csv`として端末内へ保存します。元のCSVが自動的にサーバーへ送信・上書きされることはありません。
+CSV編集ページでは上記13列が同じ順序で並ぶUTF-8のCSVだけを読み込みます。保存時は`notes1`へ端末の日付、`notes2`へ必須入力したニックネームを設定し、選択したCSVそのものを更新します。CSVはサーバーへ送信せず、別名ファイルのダウンロードも行いません。直接編集にはWindows版Edge 95以上と、`localhost`またはHTTPSの安全な接続が必要です。組織のEdgeポリシーでファイル書き込みが禁止されている場合は利用できません。
 
 ## 確認
 

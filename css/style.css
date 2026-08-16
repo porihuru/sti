@@ -567,7 +567,6 @@ body.modal-open { overflow: hidden; }
 .editor-file-card h2 { margin: 0; font-size: 19px; }
 .editor-file-card p { margin: 3px 0 0; color: var(--ink-soft); font-size: 13px; }
 .file-picker-button { position: relative; overflow: hidden; }
-.file-picker-button input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .editor-file-summary { color: var(--ink-soft); font-size: 13px; font-weight: 700; }
 .editor-message { min-height: 24px; margin: 0; color: #963e33; font-size: 13px; font-weight: 700; }
 .editor-file-card .editor-message { grid-column: 1 / -1; }

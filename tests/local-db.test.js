@@ -12,7 +12,6 @@ var roundTrip;
 
 assert.strictEqual(rows.length, 2436, "実データを厳格形式で読み込めません");
 assert.strictEqual(localDb.dateStamp(new Date(2026, 7, 15)), "2026_08_15");
-assert.strictEqual(localDb.outputFilename("m", new Date(2026, 7, 15)), "2026_08_15_m_R8db.csv");
 
 sample = [rows[0]];
 sample[0].notes3 = "カンマ,引用符\"と\n改行";
@@ -31,6 +30,7 @@ assert.throws(function () {
 assert.throws(function () {
   localDb.parse("id,Importance,difficult,category1,category2,original,question,explanation,notes1,notes2,notes3,notes4,notes5\n1,1,初級,会計,法規,正文,誤文,解説,,,,,\n1,1,初級,会計,法規,正文2,誤文2,解説2,,,,,", "bad.csv");
 }, /重複/);
-assert.throws(function () { localDb.outputFilename("bad/name"); }, /使用できない文字/);
+assert.throws(function () { localDb.validateNickname("   "); }, /ニックネーム/);
+assert.strictEqual(localDb.validateNickname("担当/者"), "担当/者");
 
 console.log("Local CSV editor validation passed");

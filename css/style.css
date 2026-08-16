@@ -331,6 +331,7 @@ main { width: min(1180px, calc(100% - 48px)); margin: 0 auto; }
 .session-header, #learnView > .question-card, #learnView > .feedback-panel { max-width: 1080px; margin-right: auto; margin-left: auto; }
 .session-header h1 { font-size: 32px; }
 .session-progress { flex: 1; max-width: 360px; }
+.session-header-actions { display: flex; gap: 9px; }
 .session-progress > span { display: block; margin-bottom: 5px; font-family: Georgia, serif; font-weight: 700; text-align: right; }
 .progress-track { height: 7px; overflow: hidden; background: #dcd8cc; border-radius: 999px; }
 .progress-track span { display: block; width: 0; height: 100%; background: var(--teal); transition: width 0.3s; }
@@ -536,6 +537,7 @@ body.modal-open { overflow: hidden; }
 .weak-table td { font-size: 13px; }
 .weak-table .law-cell { max-width: 560px; font-family: "Yu Mincho", serif; }
 .empty-state { padding: 45px 25px; color: var(--ink-soft); text-align: center; }
+.browse-print-document { display: none; }
 
 .editor-heading { align-items: center; }
 .local-only-badge {
@@ -666,6 +668,7 @@ body.modal-open { overflow: hidden; }
   .settings-card, .question-card, .feedback-panel { padding: 22px 18px; }
   .start-card { padding: 22px; }
   .session-progress { margin: 15px 0; }
+  .session-header-actions { margin-top: 15px; }
   .reader-toolbar { flex-wrap: wrap; margin-top: -4px; }
   .reader-toolbar-note { flex-basis: 100%; margin-left: 0; }
   .result-summary { grid-template-columns: repeat(3, 1fr); }
@@ -729,6 +732,7 @@ body.modal-open { overflow: hidden; }
   .browse-controls { display: grid; grid-template-columns: 1fr 1fr; }
   .browse-controls .button { padding-right: 10px; padding-left: 10px; }
   .report-actions, .report-footer-actions { display: grid; grid-template-columns: 1fr; }
+  .session-header-actions { display: grid; grid-template-columns: 1fr; }
   .result-summary { grid-template-columns: 1fr; }
   .result-score { grid-column: auto; }
   .summary-stat { min-height: 78px; border-top: 1px solid var(--line); border-left: 0; }

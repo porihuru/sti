@@ -44,6 +44,7 @@
   var letters = ["A", "B", "C", "D"];
   var toastTimer = null;
   var modalReturnFocus = null;
+  var printReturnTitle = null;
 
   function byId(id) { return document.getElementById(id); }
 
@@ -462,6 +463,7 @@
     byId("learnTitle").textContent = title;
     byId("progressText").textContent = progress + " / " + session.rows.length;
     byId("progressBar").style.width = Math.round(progress / session.rows.length * 100) + "%";
+    byId("browsePrintButton").hidden = session.config.mode !== "browse";
     renderMeta(current.target);
     byId("feedbackPanel").hidden = true;
     byId("feedbackPanel").className = "feedback-panel";
@@ -957,9 +959,62 @@
   }
 
   function printResults() {
+    cleanupPrintMode();
     document.body.classList.add("print-result");
     window.print();
-    window.setTimeout(function () { document.body.classList.remove("print-result"); }, 1000);
+    window.setTimeout(cleanupPrintMode, 1000);
+  }
+
+  function renderBrowsePrintDocument() {
+    var session = state.session;
+    var container = byId("browsePrintDocument");
+    var header = element("header", "browse-print-header");
+    var item;
+    var row;
+    var sourceText;
+    var i;
+    clear(container);
+    header.appendChild(element("h1", "", "条文一覧"));
+    header.appendChild(element("p", "", "抽出件数：" + session.rows.length + "件"));
+    header.appendChild(element("p", "", "抽出条件：" + rangeName(session.config) + "／" + orderName(session.config)));
+    sourceText = "作成日時：" + formatDate(new Date());
+    if (state.previewMode) { sourceText += "／確認DB：" + state.dataLabel; }
+    header.appendChild(element("p", "", sourceText));
+    container.appendChild(header);
+    for (i = 0; i < session.rows.length; i += 1) {
+      row = session.rows[i];
+      item = element("article", "browse-print-item");
+      item.appendChild(element("h2", "", (i + 1) + "．ID " + row.id + "　" + (row.category2 || row.category)));
+      item.appendChild(element("p", "browse-print-meta", "大分類：" + row.category + "／関連法規：" + (row.category2 || "-") + "／難易度：" + row.difficulty + "／重要度：" + row.importance));
+      item.appendChild(element("p", "browse-print-law", row.original));
+      container.appendChild(item);
+    }
+  }
+
+  function printBrowseRows() {
+    var session = state.session;
+    if (!session || session.config.mode !== "browse" || !session.rows.length) {
+      showToast("PDFにする条文がありません。");
+      return;
+    }
+    cleanupPrintMode();
+    renderBrowsePrintDocument();
+    printReturnTitle = document.title;
+    document.title = "NAF-CSM_正しい条文一覧_" + STILocalDb.dateStamp();
+    byId("dynamicPrintPageStyle").textContent = "@page { size: A4 portrait; margin: 15mm 15mm 15mm 25mm; }";
+    document.body.classList.add("print-browse");
+    window.print();
+    window.setTimeout(cleanupPrintMode, 1000);
+  }
+
+  function cleanupPrintMode() {
+    document.body.classList.remove("print-result");
+    document.body.classList.remove("print-browse");
+    byId("dynamicPrintPageStyle").textContent = "";
+    if (printReturnTitle !== null) {
+      document.title = printReturnTitle;
+      printReturnTitle = null;
+    }
   }
 
   function quitSession() {
@@ -1456,6 +1511,7 @@
     byId("nextButton").addEventListener("click", nextQuestion);
     byId("quitButton").addEventListener("click", quitSession);
     byId("printButton").addEventListener("click", printResults);
+    byId("browsePrintButton").addEventListener("click", printBrowseRows);
     byId("retryButton").addEventListener("click", function () {
       if (state.lastConfig) { startSession(state.lastConfig); }
     });
@@ -1516,7 +1572,7 @@
         closeLawModal();
       }
     });
-    window.addEventListener("afterprint", function () { document.body.classList.remove("print-result"); });
+    window.addEventListener("afterprint", cleanupPrintMode);
     window.addEventListener("resize", resizeEditorTextareas);
     window.addEventListener("beforeunload", function (event) {
       if (!state.editor.dirty) { return; }

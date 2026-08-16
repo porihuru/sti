@@ -14,6 +14,7 @@
 - 1～200問の範囲で出題数を指定
 - Cookieによる正解数、不正解数、分類別成績、不得意問題の保存
 - 学習結果の印刷・PDF保存
+- 閲覧モードで抽出した正しい条文一覧のA4縦PDF保存
 - 長い条文を読みやすくする文字サイズ切替と集中表示
 - ローカルCSVの形式検査、レコード単位の編集・追加・削除・保存
 - ローカルCSVを使った本アプリ同等の確認モード（確認履歴は別Cookie）
@@ -96,6 +97,8 @@ Cookie容量を超えないよう、不得意問題は弱点度の高いもの�
 
 学習結果画面で「PDF用に印刷」を選び、Edgeの印刷画面からプリンターとして「PDFとして保存」を選択します。
 
+「正しい条文を読む」では、抽出後に「抽出条文をPDF作成」を選ぶと、対象条文を一覧で印刷できます。用紙はA4縦、左余白は25mmです。
+
 ## データ
 
 `db/R8db.csv` は以下の列を持ちます。
@@ -116,6 +119,7 @@ Node.jsが利用できる開発環境では、CSVの構造を次のコマンド�
 node tests/csv-parser.test.js
 node tests/local-db.test.js
 node tests/editor-ui.test.js
+node tests/browse-print.test.js
 node tests/history-cookie.test.js
 node tests/http-smoke.test.js
 node tests/offline-assets.test.js

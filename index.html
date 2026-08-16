@@ -8,6 +8,7 @@
   <title>NAF-CSM | 会計法規トレーニング</title>
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/print.css" media="print">
+  <style id="dynamicPrintPageStyle"></style>
   <script defer src="js/csv.js"></script>
   <script defer src="js/local-db.js"></script>
   <script defer src="js/history.js"></script>
@@ -329,7 +330,10 @@
             <span id="progressText">1 / 10</span>
             <div class="progress-track"><span id="progressBar"></span></div>
           </div>
-          <button class="button quiet" id="quitButton" type="button">学習を終了</button>
+          <div class="session-header-actions">
+            <button class="button secondary" id="browsePrintButton" type="button" hidden>抽出条文をPDF作成</button>
+            <button class="button quiet" id="quitButton" type="button">学習を終了</button>
+          </div>
         </div>
 
         <article class="question-card">
@@ -392,6 +396,8 @@
         </div>
         <div id="analysisContent"></div>
       </section>
+
+      <section class="browse-print-document" id="browsePrintDocument" aria-label="抽出した正しい条文の一覧"></section>
     </main>
 
     <footer class="site-footer">

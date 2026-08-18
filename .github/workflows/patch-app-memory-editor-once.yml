@@ -1,3 +1,4 @@
+# trigger
 name: Patch app memory editor once
 
 on:
@@ -485,7 +486,7 @@ jobs:
               delete state.editor.changes[String(current.id)];
               delete state.editor.deletedPrevious[String(current.id)];
               state.editor.rows = rows;
-              nextId = rows.length ? rows[Math.min(0, rows.length - 1)].id : null;
+              nextId = rows.length ? rows[0].id : null;
               state.editor.currentId = nextId;
               setEditorDirty(false);
               renderEditorRecordList();
@@ -590,7 +591,6 @@ jobs:
 
           old_before = '      if (!state.editor.dirty) { return; }'
           new_before = '      if (!state.editor.dirty && !editorHasChanges()) { return; }'
-          # Replace only the final beforeunload guard, which is the last occurrence.
           pos = text.rfind(old_before)
           if pos < 0:
               raise SystemExit('beforeunload guard not found')

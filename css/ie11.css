@@ -1,0 +1,479 @@
+/* NAF-CSM: IE11 / Microsoft Edge IE mode compatibility overrides. */
+/* This file avoids CSS variables, CSS Grid, flex gap, min/max/clamp and inset. */
+
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+  html { min-width: 320px; }
+  body {
+    margin: 0;
+    background: #f4f1e8;
+    color: #18312d;
+    font-family: "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
+  }
+  [hidden] { display: none !important; }
+
+  main {
+    width: calc(100% - 48px);
+    max-width: 1180px;
+    margin-right: auto;
+    margin-left: auto;
+  }
+  .site-header {
+    padding: 14px 24px;
+    background: #fffdf8;
+    border-bottom-color: #d8d4c8;
+  }
+  .hero-copy h1 { font-size: 32px; }
+  .law-modal-panel {
+    width: 980px;
+    max-width: 100%;
+    background: #fffdf8;
+  }
+  .law-modal-scroll { padding: 34px 24px; }
+  .editor-leave-panel {
+    width: 540px;
+    max-width: 100%;
+    background: #fffdf8;
+  }
+  .site-footer { padding: 28px 24px; }
+
+  .brand-mark,
+  .loading-bar.ready,
+  .hero-panel,
+  .form-section h2 > span,
+  .choice-letter,
+  .result-score,
+  .site-footer,
+  .toast { background: #18312d; }
+
+  .brand-subtitle,
+  .card-kicker,
+  .score-caption,
+  .mini-stats dt,
+  .section-heading > p,
+  .page-heading > p,
+  .page-heading > div > p:last-child,
+  .report-header p,
+  .field > span,
+  .mode-option small,
+  .condition-list dt,
+  .start-note,
+  .reader-toolbar-label,
+  .reader-toolbar-note,
+  .meta-badge,
+  .report-conditions span,
+  .summary-stat span,
+  .analysis-totals span,
+  .bar-value,
+  .weak-table th,
+  .empty-state,
+  .editor-file-card p,
+  .editor-file-summary,
+  .editor-toolbar-label,
+  .record-count,
+  .editor-leave-panel > p:not(.eyebrow),
+  .editor-fields input[readonly] { color: #4f615d; }
+
+  .loading-bar { background: #075e57; }
+  .eyebrow, .mode-label { color: #087f73; }
+  .text-button,
+  .question-instruction,
+  .focus-reading-button,
+  .local-only-badge { color: #075e57; }
+
+  .button.primary,
+  .count-presets button.selected,
+  .text-size-buttons button.selected,
+  .result-symbol,
+  .bar-track span { background: #087f73; }
+  .button.primary:hover { background: #075e57; }
+
+  .button.secondary,
+  .settings-card,
+  .start-card,
+  .question-card,
+  .feedback-panel,
+  .analysis-card,
+  .result-summary,
+  .report-conditions,
+  .result-details,
+  .editor-file-card,
+  .editor-toolbar,
+  .editor-records,
+  .record-editor,
+  .law-modal-panel { background: #fffdf8; }
+
+  .button.secondary,
+  .button.quiet,
+  .settings-card,
+  .start-card,
+  .question-card,
+  .feedback-panel,
+  .analysis-card,
+  .result-summary,
+  .report-conditions,
+  .result-details,
+  .editor-file-card,
+  .editor-toolbar,
+  .editor-records,
+  .record-editor,
+  .form-section,
+  .condition-list div,
+  .reader-toolbar,
+  .text-size-buttons button,
+  .result-entry,
+  .summary-stat,
+  .weak-table th,
+  .weak-table td,
+  .record-editor-actions,
+  .main-nav { border-color: #d8d4c8; }
+
+  .button.secondary:hover,
+  .button.quiet:hover,
+  .focus-reading-button:hover,
+  .choice-button:hover,
+  .judge-button.correct-choice:hover { border-color: #087f73; }
+
+  .mode-card,
+  .settings-card,
+  .start-card,
+  .question-card,
+  .feedback-panel,
+  .analysis-card,
+  .result-summary,
+  .report-conditions,
+  .result-details,
+  .editor-file-card,
+  .editor-toolbar,
+  .editor-records,
+  .record-editor { border-radius: 18px; }
+
+  .hero-panel,
+  .settings-card,
+  .start-card,
+  .question-card,
+  .feedback-panel,
+  .analysis-card,
+  .result-summary,
+  .report-conditions,
+  .result-details,
+  .editor-file-card,
+  .editor-toolbar,
+  .editor-records,
+  .record-editor,
+  .toast { box-shadow: 0 18px 45px rgba(26, 52, 47, 0.09); }
+
+  .button.danger,
+  .unsaved-badge,
+  .choice-button.answer-wrong { background: #f8e4df; }
+  .choice-button.answer-wrong,
+  .feedback-panel.incorrect,
+  .judge-button.wrong-choice:hover { border-color: #c95c4b; }
+  .incorrect .result-symbol { background: #c95c4b; }
+  .feedback-panel.correct { border-top-color: #087f73; }
+  .score-ring { border-color: #dcece7; border-top-color: #087f73; }
+  .mode-option input:checked + span,
+  .local-only-badge,
+  .focus-reading-button:hover { background: #dcece7; }
+  .mode-option input:checked + span,
+  .count-presets button.selected,
+  .text-size-buttons button.selected { border-color: #087f73; }
+  .law-text { border-left-color: #244a61; }
+  .choice-button.chosen { border-color: #244a61; }
+  .progress-track span { background: #087f73; }
+
+  /* CSS Grid -> Flexbox fallbacks */
+  .record-layout,
+  .mode-grid,
+  .setup-layout,
+  .mode-options,
+  .form-grid,
+  .choice-button,
+  .judge-buttons,
+  .result-summary,
+  .analysis-grid,
+  .analysis-totals,
+  .bar-row,
+  .editor-file-card,
+  .editor-layout,
+  .record-navigation,
+  .editor-fields {
+    display: -ms-flexbox;
+    display: flex;
+  }
+
+  .mode-grid,
+  .mode-options,
+  .form-grid,
+  .analysis-totals,
+  .editor-file-card,
+  .editor-fields {
+    -ms-flex-wrap: wrap;
+    flex-wrap: wrap;
+  }
+
+  .record-layout { -ms-flex-align: center; align-items: center; }
+  .score-summary { width: 52%; }
+  .mini-stats {
+    display: block;
+    width: 48%;
+    border-left: 1px solid #ddd4ba;
+  }
+
+  .mode-grid { margin-right: -14px; }
+  .mode-card {
+    width: calc(25% - 14px);
+    margin-right: 14px;
+    margin-bottom: 14px;
+    background: #fffdf8;
+    border-color: #d8d4c8;
+  }
+  .mode-card:before { background: #087f73; }
+  .mode-card.wrong-card:before { background: #c95c4b; }
+  .mode-card.judge-card:before { background: #d59c37; }
+  .mode-card.browse-card:before { background: #244a61; }
+
+  .setup-layout { -ms-flex-align: start; align-items: flex-start; }
+  .settings-card {
+    -ms-flex: 1 1 auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-right: 22px;
+  }
+  .start-card {
+    position: static;
+    width: 300px;
+    -ms-flex: 0 0 300px;
+    flex: 0 0 300px;
+  }
+
+  .mode-options { margin-right: -10px; }
+  .mode-option {
+    width: calc(50% - 10px);
+    margin-right: 10px;
+    margin-bottom: 10px;
+  }
+  .form-grid { margin-right: -15px; }
+  .form-grid > .field {
+    width: calc(33.333% - 15px);
+    margin-right: 15px;
+    margin-bottom: 15px;
+  }
+  .range-grid > .field { width: calc(50% - 15px); }
+  .order-grid > .field { width: calc(33.333% - 15px); }
+
+  .choice-list { display: block; }
+  .choice-item { margin-bottom: 12px; }
+  .choice-button { -ms-flex-align: start; align-items: flex-start; }
+  .choice-letter {
+    -ms-flex: 0 0 36px;
+    flex: 0 0 36px;
+    margin-right: 14px;
+  }
+  .choice-text {
+    -ms-flex: 1 1 auto;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .judge-buttons { margin-right: -14px; }
+  .judge-button {
+    width: calc(50% - 14px);
+    margin-right: 14px;
+  }
+
+  .result-summary { -ms-flex-align: stretch; align-items: stretch; }
+  .result-score {
+    width: 31%;
+    -ms-flex: 0 0 31%;
+    flex: 0 0 31%;
+  }
+  .summary-stat {
+    width: 23%;
+    -ms-flex: 1 1 23%;
+    flex: 1 1 23%;
+  }
+
+  .analysis-grid { margin-right: -18px; }
+  .analysis-grid > .analysis-card {
+    width: calc(50% - 18px);
+    margin-right: 18px;
+  }
+  .analysis-totals { margin-right: -8px; }
+  .analysis-totals > div {
+    width: calc(33.333% - 8px);
+    margin-right: 8px;
+  }
+  .bar-list { display: block; }
+  .bar-row {
+    -ms-flex-align: center;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .bar-label {
+    width: 105px;
+    -ms-flex: 0 0 105px;
+    flex: 0 0 105px;
+    margin-right: 12px;
+  }
+  .bar-track {
+    -ms-flex: 1 1 auto;
+    flex: 1 1 auto;
+    min-width: 40px;
+    margin-right: 12px;
+  }
+  .bar-value {
+    width: 90px;
+    -ms-flex: 0 0 90px;
+    flex: 0 0 90px;
+  }
+
+  .editor-file-card > div:first-child {
+    -ms-flex: 1 1 auto;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .file-picker-button {
+    -ms-flex: 0 0 auto;
+    flex: 0 0 auto;
+    margin-left: 24px;
+  }
+  .editor-file-summary,
+  .editor-file-card .editor-message {
+    width: 100%;
+    margin-top: 10px;
+  }
+  .editor-layout { -ms-flex-align: start; align-items: flex-start; }
+  .editor-records {
+    position: static;
+    width: 270px;
+    -ms-flex: 0 0 270px;
+    flex: 0 0 270px;
+    margin-right: 18px;
+  }
+  .record-editor {
+    -ms-flex: 1 1 auto;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .record-navigation { margin-right: -7px; }
+  .record-navigation .button {
+    width: calc(50% - 7px);
+    margin-right: 7px;
+  }
+  .editor-fields > .field {
+    width: 100%;
+    margin-bottom: 14px;
+  }
+
+  /* IE11 has no flex gap support. */
+  .brand-button > * + *,
+  .main-nav > * + *,
+  .loading-bar > * + *,
+  .hero-actions > * + *,
+  .section-heading > * + *,
+  .page-heading > * + *,
+  .analysis-heading > * + *,
+  .report-header > * + *,
+  .session-header > * + *,
+  .form-section h2 > * + *,
+  .count-presets > * + *,
+  .session-header-actions > * + *,
+  .reader-toolbar > * + *,
+  .text-size-buttons > * + *,
+  .question-meta > * + *,
+  .browse-controls > * + *,
+  .feedback-heading > * + *,
+  .report-actions > * + *,
+  .report-footer-actions > * + *,
+  .editor-toolbar-actions > * + *,
+  .record-editor-heading-actions > * + *,
+  .record-editor-actions > * + *,
+  .editor-leave-actions > * + * { margin-left: 10px; }
+  .count-presets > * + *, .question-meta > * + * { margin-left: 8px; }
+  .text-size-buttons > * + * { margin-left: 4px; }
+
+  .law-modal,
+  .editor-leave-modal {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+  }
+  .condition-list dd,
+  .law-text,
+  .choice-text,
+  .law-modal-text,
+  .editor-toolbar strong { word-wrap: break-word; }
+  .start-card, .editor-records { position: static; }
+}
+
+@media all and (-ms-high-contrast: none) and (max-width: 960px),
+       (-ms-high-contrast: active) and (max-width: 960px) {
+  main { width: calc(100% - 36px); }
+  .mode-card { width: calc(50% - 14px); }
+  .setup-layout { display: block; }
+  .settings-card { margin-right: 0; }
+  .start-card { width: auto; margin-top: 22px; }
+  .editor-layout { display: block; }
+  .editor-records { width: auto; margin: 0 0 18px; }
+}
+
+@media all and (-ms-high-contrast: none) and (max-width: 720px),
+       (-ms-high-contrast: active) and (max-width: 720px) {
+  main { width: calc(100% - 28px); }
+  .hero-copy h1 { font-size: 24px; }
+  .record-layout,
+  .section-heading,
+  .page-heading,
+  .analysis-heading,
+  .report-header,
+  .session-header,
+  .setup-layout,
+  .analysis-grid,
+  .editor-layout { display: block; }
+  .score-summary,
+  .mini-stats,
+  .analysis-grid > .analysis-card { width: auto; margin-right: 0; }
+  .mini-stats { margin-top: 20px; border-left: 0; }
+  .mode-card,
+  .mode-option,
+  .form-grid > .field,
+  .range-grid > .field,
+  .order-grid > .field { width: calc(100% - 15px); }
+  .settings-card { margin-right: 0; }
+  .start-card { width: auto; margin-top: 22px; }
+  .judge-buttons { display: block; margin-right: 0; }
+  .judge-button { width: 100%; margin: 0 0 14px; }
+  .result-summary { -ms-flex-wrap: wrap; flex-wrap: wrap; }
+  .result-score { width: 100%; -ms-flex-basis: 100%; flex-basis: 100%; }
+  .summary-stat { width: 33.333%; -ms-flex-basis: 33.333%; flex-basis: 33.333%; }
+  .editor-records { width: auto; margin-right: 0; margin-bottom: 18px; }
+  .editor-toolbar { display: block; }
+  .editor-toolbar-actions { margin-top: 14px; }
+  .file-picker-button { width: 100%; margin: 14px 0 0; }
+}
+
+@media all and (-ms-high-contrast: none) and (max-width: 520px),
+       (-ms-high-contrast: active) and (max-width: 520px) {
+  main { width: calc(100% - 20px); }
+  .site-header { display: block; padding: 12px 18px; }
+  .main-nav { margin-top: 10px; text-align: center; }
+  .hero-copy h1 { font-size: 17px; }
+  .mode-grid { margin-right: 0; }
+  .mode-card { width: 100%; margin-right: 0; }
+  .mode-options, .form-grid { margin-right: 0; }
+  .mode-option,
+  .form-grid > .field,
+  .range-grid > .field,
+  .order-grid > .field { width: 100%; margin-right: 0; }
+  .result-summary { display: block; }
+  .result-score, .summary-stat { width: 100%; }
+  .summary-stat { border-left: 0; border-top: 1px solid #d8d4c8; }
+  .bar-row { -ms-flex-wrap: wrap; flex-wrap: wrap; }
+  .bar-label { width: 78px; -ms-flex-basis: 78px; flex-basis: 78px; }
+  .bar-value { margin-left: 90px; margin-top: 6px; }
+  .record-editor-actions,
+  .editor-leave-actions { display: block; }
+  .record-editor-actions .button,
+  .editor-leave-actions .button { display: block; width: 100%; margin: 8px 0 0; }
+}

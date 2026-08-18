@@ -3,12 +3,19 @@
 var assert = require("assert");
 var fs = require("fs");
 var path = require("path");
-var localDb = require("../js/local-db.js");
+var localDbPath = path.join(__dirname, "..", "js", "local-db.js");
+var localDbSource = fs.readFileSync(localDbPath, "utf8");
+var localDb = require(localDbPath);
 var source = fs.readFileSync(path.join(__dirname, "..", "db", "R8db.csv"), "utf8");
 var rows = localDb.parse(source, "R8db.csv");
 var sample;
 var serialized;
 var roundTrip;
+
+assert.ok(!/\b(?:let|const)\b/.test(localDbSource), "local-db.jsにIE11非対応のlet/constが含まれています");
+assert.ok(localDbSource.indexOf("=>") < 0, "local-db.jsにIE11非対応のアロー関数が含まれています");
+assert.ok(localDbSource.indexOf("fetch(") < 0, "local-db.jsにIE11非対応のfetchが含まれています");
+assert.ok(!/\bPromise\b/.test(localDbSource), "local-db.jsにIE11非対応のPromiseが含まれています");
 
 assert.strictEqual(rows.length, 2436, "実データを厳格形式で読み込めません");
 assert.strictEqual(localDb.dateStamp(new Date(2026, 7, 15)), "2026_08_15");

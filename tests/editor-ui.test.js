@@ -32,6 +32,9 @@ while ((match = byIdPattern.exec(app)) !== null) {
 assert.ok(html.indexOf('src="js/csv.js"') < html.indexOf('src="js/local-db.js"'), "CSVパーサーより先にローカルDB機能が読み込まれています");
 assert.ok(html.indexOf('src="js/local-db.js"') < html.indexOf('src="js/app.js"'), "アプリより後にローカルDB機能が読み込まれています");
 assert.ok(app.indexOf("window.showOpenFilePicker") >= 0, "書き込み可能なローカルファイル読み込みが実装されていません");
+assert.ok(app.indexOf("return !!(window.isSecureContext && window.showOpenFilePicker);") >= 0, "未対応ブラウザーでFile System Access APIを無効化する判定がありません");
+assert.ok(app.indexOf("if (!directFileEditingAvailable())") >= 0, "CSVファイル選択前の互換性ガードがありません");
+assert.ok(app.indexOf('byId("openLocalCsvButton").disabled = !available;') >= 0, "未対応ブラウザーでCSV直接編集ボタンを無効化していません");
 assert.ok(app.indexOf("window.showSaveFilePicker") < 0, "別名保存処理が残っています");
 assert.ok(app.indexOf("downloadLocalCsv") < 0, "CSVダウンロード処理が残っています");
 assert.ok(app.indexOf("createWritable()") >= 0, "選択したCSVの直接更新が実装されていません");

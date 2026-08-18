@@ -3,7 +3,9 @@
 var assert = require("assert");
 var fs = require("fs");
 var path = require("path");
-var csv = require(path.join(__dirname, "..", "js", "csv.js"));
+var csvPath = path.join(__dirname, "..", "js", "csv.js");
+var csvSource = fs.readFileSync(csvPath, "utf8");
+var csv = require(csvPath);
 var source = fs.readFileSync(path.join(__dirname, "..", "db", "R8db.csv"), "utf8");
 var rows = csv.parse(source);
 var categories = {};
@@ -13,6 +15,12 @@ var difficulties = {};
 var importance = {};
 var ids = {};
 var i;
+
+assert.ok(csvSource.indexOf("XMLHttpRequest") >= 0, "CSV取得にIE11対応のXMLHttpRequestが使われていません");
+assert.ok(!/\b(?:let|const)\b/.test(csvSource), "csv.jsにIE11非対応のlet/constが含まれています");
+assert.ok(csvSource.indexOf("=>") < 0, "csv.jsにIE11非対応のアロー関数が含まれています");
+assert.ok(csvSource.indexOf("fetch(") < 0, "csv.jsにIE11非対応のfetchが含まれています");
+assert.ok(!/\bPromise\b/.test(csvSource), "csv.jsにIE11非対応のPromiseが含まれています");
 
 assert.strictEqual(rows.length, 2436, "CSVのレコード数が想定と異なります");
 assert.strictEqual(rows[0].id, 1, "先頭IDが1ではありません");

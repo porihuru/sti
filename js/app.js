@@ -1980,6 +1980,7 @@
       var original;
       var currentStatus;
       var i;
+      var wasNew = batch.isNew;
       if (!form.checkValidity()) {
         if (form.reportValidity) { form.reportValidity(); }
         byId("recordEditorMessage").textContent = "必須項目を入力してください。";
@@ -2014,6 +2015,14 @@
         }
       }
       batch.nickname = row.notes2;
+      if (wasNew) {
+        batch.currentId = row.id;
+        batch.isNew = false;
+        setDirty(false);
+        startAdd(row);
+        setMessage("ID " + row.id + "の追加を確定しました。続けて次のレコードを入力できます。最後に「CSVを保存」を押してください。");
+        return true;
+      }
       batch.currentId = row.id;
       batch.isNew = false;
       setDirty(false);
@@ -2022,17 +2031,33 @@
       return true;
     }
 
-    function startAdd() {
+    function startAdd(sourceRow) {
       var maxId = 0;
+      var source = sourceRow || findRow(batch.currentId);
+      var template;
       var i;
       for (i = 0; i < batch.rows.length; i += 1) {
         if (batch.rows[i].id > maxId) { maxId = batch.rows[i].id; }
       }
-      batch.previousId = batch.currentId;
+      batch.previousId = source ? source.id : batch.currentId;
       batch.currentId = null;
       batch.isNew = true;
       byId("editorSearch").value = "";
-      fillForm({ id: maxId + 1, importance: 1, difficulty: "初級", notes2: batch.nickname }, true);
+      template = {
+        id: maxId + 1,
+        importance: source ? source.importance : 1,
+        difficulty: source ? source.difficulty : "初級",
+        category1: source ? (source.category1 || source.category || "") : "",
+        category2: source ? (source.category2 || "") : "",
+        notes2: source && source.notes2 && source.notes2 !== "-" ? source.notes2 : batch.nickname,
+        notes3: source ? (source.notes3 || "") : "",
+        notes4: source ? (source.notes4 || "") : "",
+        notes5: source ? (source.notes5 || "") : ""
+      };
+      fillForm(template, true);
+      setDirty(false);
+      renderList();
+      byId("editOriginal").focus();
     }
 
     function toggleDelete() {

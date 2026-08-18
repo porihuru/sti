@@ -1,0 +1,23 @@
+name: Actions self test
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/action-selftest-trigger.txt'
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/action-selftest.yml .github/action-selftest-trigger.txt
+          echo ok > .github/action-selftest-result.txt
+          git add .github/action-selftest-result.txt
+          git commit -m "Actions self test ok"
+          git push origin HEAD:main

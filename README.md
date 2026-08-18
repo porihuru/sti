@@ -28,6 +28,26 @@
 
 外部ライブラリやビルド処理には依存していません。
 
+### Microsoft EdgeのIEモード / IE11互換表示
+
+通常のChromium版Edgeに加え、Microsoft EdgeのIEモードで動作させるための互換レイヤーとして `css/ie11.css` と `js/ie11.js` を読み込みます。
+
+IEモードでは、次の機能を主な対応対象としています。
+
+- ホーム画面と各画面の表示
+- 学習条件の設定
+- 正誤問題・4択問題
+- 正しい条文の閲覧
+- Cookieによる学習履歴と設定保存
+- 分析表示
+- ブラウザーの印刷機能を使った印刷・PDF保存
+
+IE11で未対応のCSS Grid、CSS変数、`gap`、`min()` / `max()` / `clamp()`、`inset` などには専用CSSのフォールバックを用意しています。JavaScriptではIE11で扱えない `scrollIntoView()` のオプション指定などを互換処理しています。
+
+ただし、**CSVの直接編集はIEモード / IE11では利用できません。** CSVを選択して元ファイルへ直接書き戻す機能はFile System Access APIを使用するため、Windows版Edge 95以上の通常モードで、`localhost`またはHTTPSから開いた場合に使用してください。IEモードではCSV直接編集ボタンを無効化します。
+
+IEモードの表示や通信は、組織のセキュリティゾーン、Cookieポリシー、認証、Webサーバーの`.csv` MIME設定などの影響を受けます。そのため、互換コードと自動テストだけで完全な動作を保証するものではなく、実際に使用する庁内・社内環境のIEモードで最終確認してください。
+
 ## インターネット未接続環境
 
 このアプリは、インターネットに接続されていない庁内・社内Webサーバーで動作する構成です。
@@ -123,6 +143,7 @@ node tests/browse-print.test.js
 node tests/history-cookie.test.js
 node tests/http-smoke.test.js
 node tests/offline-assets.test.js
+node tests/ie11-compat.test.js
 node tests/vscode-launch.test.js
 node tests/server-port-fallback.test.js
 ```

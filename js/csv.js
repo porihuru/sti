@@ -183,8 +183,144 @@
     request.send(null);
   }
 
+  /*
+   * Modern Edge batch editor save refresh.
+   * After the final CSV write succeeds, reopen the same file through the
+   * existing batch-editor loader. This makes the saved file the new baseline,
+   * clearing added/edited/deleted markers without duplicating editor state.
+   * IE mode is intentionally excluded because msSaveBlob cannot report whether
+   * the user actually completed the Windows save dialog.
+   */
+  function installModernSaveRefresh() {
+    var documentObject;
+    var nativePicker;
+    var handlePrototype;
+    var nativeCreateWritable;
+    var lastHandles = null;
+    var reuseHandlesOnce = false;
+    var finalSavePending = false;
+    var pendingTimer = null;
+
+    if (!root || !root.document || root.document.documentMode ||
+        !root.showOpenFilePicker || !root.Promise || !root.FileSystemFileHandle) {
+      return;
+    }
+
+    documentObject = root.document;
+    nativePicker = root.showOpenFilePicker;
+    handlePrototype = root.FileSystemFileHandle.prototype;
+    nativeCreateWritable = handlePrototype && handlePrototype.createWritable;
+    if (!nativeCreateWritable) { return; }
+
+    root.showOpenFilePicker = function (options) {
+      if (reuseHandlesOnce && lastHandles && lastHandles.length) {
+        reuseHandlesOnce = false;
+        return root.Promise.resolve(lastHandles);
+      }
+      return nativePicker.call(root, options).then(function (handles) {
+        if (handles && handles.length) { lastHandles = handles; }
+        return handles;
+      });
+    };
+
+    handlePrototype.createWritable = function () {
+      var handle = this;
+      var args = arguments;
+      return nativeCreateWritable.apply(handle, args).then(function (writable) {
+        var nativeClose;
+        if (!writable || !writable.close || writable.__stiSaveRefreshWrapped) {
+          return writable;
+        }
+        nativeClose = writable.close;
+        writable.__stiSaveRefreshWrapped = true;
+        writable.close = function () {
+          var closeArgs = arguments;
+          var result;
+          try {
+            result = nativeClose.apply(writable, closeArgs);
+          } catch (error) {
+            clearPendingSave();
+            throw error;
+          }
+          if (!result || !result.then) { return result; }
+          return result.then(function (value) {
+            if (finalSavePending && lastHandles && lastHandles.length) {
+              clearPendingSave();
+              root.setTimeout(refreshSavedCsv, 0);
+            }
+            return value;
+          }, function (error) {
+            clearPendingSave();
+            throw error;
+          });
+        };
+        return writable;
+      });
+    };
+
+    function clearPendingSave() {
+      finalSavePending = false;
+      if (pendingTimer) {
+        root.clearTimeout(pendingTimer);
+        pendingTimer = null;
+      }
+    }
+
+    function markPendingSave() {
+      clearPendingSave();
+      finalSavePending = true;
+      pendingTimer = root.setTimeout(clearPendingSave, 10000);
+    }
+
+    function refreshSavedCsv() {
+      var button = documentObject.getElementById("openLocalCsvButton");
+      var message = documentObject.getElementById("editorMessage");
+      var originalConfirm = root.confirm;
+      var observer = null;
+      if (!button || !lastHandles || !lastHandles.length) { return; }
+
+      reuseHandlesOnce = true;
+      root.confirm = function (text) {
+        if (String(text || "").indexOf("CSVへ保存していない変更があります。別のCSVを開くと変更は失われます。続けますか？") === 0) {
+          return true;
+        }
+        return originalConfirm.apply(root, arguments);
+      };
+
+      if (root.MutationObserver && message) {
+        observer = new root.MutationObserver(function () {
+          if (String(message.textContent || "").indexOf("ローカルCSVを読み込みました。") === 0) {
+            message.textContent = "変更内容をローカルCSVへ保存しました。続けて編集できます。";
+            observer.disconnect();
+            observer = null;
+          }
+        });
+        observer.observe(message, { childList: true, characterData: true, subtree: true });
+      }
+
+      try {
+        button.click();
+      } finally {
+        root.confirm = originalConfirm;
+      }
+
+      root.setTimeout(function () {
+        reuseHandlesOnce = false;
+        if (observer) { observer.disconnect(); }
+      }, 3000);
+    }
+
+    documentObject.addEventListener("click", function (event) {
+      var target = event.target;
+      if (target && target.id === "saveAllCsvButton") {
+        markPendingSave();
+      }
+    }, true);
+  }
+
   var api = { parse: parse, parseRows: parseRows, load: load };
   root.STICsv = api;
+  installModernSaveRefresh();
 
   if (typeof module !== "undefined" && module.exports) {
     module.exports = api;

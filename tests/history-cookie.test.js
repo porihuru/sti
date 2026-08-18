@@ -1,8 +1,12 @@
 "use strict";
 
 var assert = require("assert");
+var fs = require("fs");
+var path = require("path");
 var cookies = {};
 var documentMock = {};
+var historyPath = path.join(__dirname, "..", "js", "history.js");
+var historySource = fs.readFileSync(historyPath, "utf8");
 
 Object.defineProperty(documentMock, "cookie", {
   get: function () {
@@ -24,10 +28,15 @@ Object.defineProperty(documentMock, "cookie", {
 global.document = documentMock;
 global.window = { location: { protocol: "https:" } };
 
-var history = require("../js/history.js").STIHistory;
+var history = require(historyPath).STIHistory;
 var i;
 var row;
 
+assert.ok(historySource.indexOf("document.cookie") >= 0, "履歴保存にCookieが使われていません");
+assert.ok(!/\b(?:let|const)\b/.test(historySource), "history.jsにIE11非対応のlet/constが含まれています");
+assert.ok(historySource.indexOf("=>") < 0, "history.jsにIE11非対応のアロー関数が含まれています");
+assert.ok(historySource.indexOf("fetch(") < 0, "history.jsにIE11非対応のfetchが含まれています");
+assert.ok(!/\bPromise\b/.test(historySource), "history.jsにIE11非対応のPromiseが含まれています");
 assert.ok(history.cookiesAvailable(), "Cookieの利用可否判定に失敗しました");
 
 for (i = 1; i <= 500; i += 1) {

@@ -11,10 +11,12 @@ var asset;
 var files = [
   "index.html",
   "css/style.css",
+  "css/ie11.css",
   "css/print.css",
   "js/csv.js",
   "js/local-db.js",
   "js/history.js",
+  "js/ie11.js",
   "js/app.js"
 ];
 var i;
@@ -31,6 +33,9 @@ for (i = 0; i < files.length; i += 1) {
 
 assert.ok(fs.existsSync(path.join(root, "db", "R8db.csv")), "CSVがありません");
 assert.ok(html.indexOf('name="viewport"') >= 0, "スマートフォン用viewport設定がありません");
+assert.ok(html.indexOf('href="css/ie11.css"') >= 0, "IE11互換CSSが読み込まれていません");
+assert.ok(html.indexOf('src="js/ie11.js"') >= 0, "IE11互換JavaScriptが読み込まれていません");
+assert.ok(html.indexOf('src="js/ie11.js"') < html.indexOf('src="js/app.js"'), "IE11互換JavaScriptはapp.jsより前に読み込む必要があります");
 assert.ok(fs.readFileSync(path.join(root, "css", "style.css"), "utf8").indexOf("@media (max-width: 520px)") >= 0, "スマートフォン用CSSがありません");
 
 console.log("Offline asset validation passed");

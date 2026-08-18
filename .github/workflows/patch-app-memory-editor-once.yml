@@ -1,4 +1,3 @@
-# trigger
 name: Patch app memory editor once
 
 on:
@@ -6,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/patch-app-memory-editor-once.yml'
+      - '.github/app-memory-editor-trigger.txt'
 
 permissions:
   contents: write
@@ -249,7 +249,6 @@ jobs:
               option.value = String(rows[i].id);
               if (!state.editor.isNew && rows[i].id === state.editor.currentId) { option.selected = true; }
               select.appendChild(option);
-
               button = element("button", "record-list-item" + (status ? " record-list-item-" + status : ""), label);
               button.type = "button";
               button.setAttribute("role", "option");
@@ -412,7 +411,6 @@ jobs:
             }
             try { row = editorRowFromForm(); }
             catch (error) { byId("recordEditorMessage").textContent = error.message; return; }
-
             if (state.editor.isNew) {
               for (i = 0; i < state.editor.rows.length; i += 1) {
                 if (state.editor.rows[i].id === row.id) {
@@ -437,7 +435,6 @@ jobs:
               }
               rows = makeEditorCandidate(row);
             }
-
             state.editor.rows = rows;
             state.editor.nickname = row.notes2;
             state.editor.currentId = row.id;
@@ -460,7 +457,6 @@ jobs:
             var i;
             if (!current) { return; }
             status = editorStatus(current.id);
-
             if (status === "deleted") {
               previous = state.editor.deletedPrevious[String(current.id)] || "";
               if (previous) { state.editor.changes[String(current.id)] = previous; }
@@ -471,14 +467,12 @@ jobs:
               showToast("ID " + current.id + "の削除予定を取り消しました。");
               return;
             }
-
             activeRows = activeEditorRows();
             if (activeRows.length <= 1) {
               byId("recordEditorMessage").textContent = "最後の1件は削除できません。";
               return;
             }
             if (!window.confirm("ID " + current.id + "を削除予定にしますか？CSV保存までは取り消せます。")) { return; }
-
             if (status === "added") {
               for (i = 0; i < state.editor.rows.length; i += 1) {
                 if (state.editor.rows[i].id !== current.id) { rows.push(cloneRow(state.editor.rows[i])); }
@@ -494,7 +488,6 @@ jobs:
               showToast("未保存の追加レコードを取り消しました。");
               return;
             }
-
             state.editor.deletedPrevious[String(current.id)] = status;
             state.editor.changes[String(current.id)] = "deleted";
             setEditorDirty(false);
@@ -610,17 +603,16 @@ jobs:
                   raise SystemExit('missing marker: ' + marker)
           if 'let ' in text or 'const ' in text or '=>' in text:
               raise SystemExit('IE11-incompatible syntax introduced')
-
           path.write_text(text, encoding='utf-8', newline='\n')
 
       - name: Check app.js syntax
         run: node --check js/app.js
 
-      - name: Commit app.js and remove workflow
+      - name: Commit app.js and remove temporary files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm .github/workflows/patch-app-memory-editor-once.yml
+          git rm .github/workflows/patch-app-memory-editor-once.yml .github/app-memory-editor-trigger.txt
           git add js/app.js
           git commit -m "CSV編集をメモリ確定と一括保存方式に変更"
           git push origin HEAD:main

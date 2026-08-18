@@ -1,0 +1,89 @@
+name: Patch modern Edge batch editor once
+
+on:
+  push:
+    paths:
+      - '.github/normal-edge-batch-trigger.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Copy batch editor into app.js
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          app_path = Path('js/app.js')
+          ie_path = Path('js/ie11.js')
+          app = app_path.read_text(encoding='utf-8')
+          ie = ie_path.read_text(encoding='utf-8')
+
+          if 'function setupBatchEditorForModernEdge()' in app:
+              raise SystemExit('modern Edge batch editor already exists')
+
+          start_marker = '  function setupIeBatchEditor() {'
+          listener_marker = '  document.addEventListener("DOMContentLoaded", setupIeBatchEditor);'
+          start = ie.find(start_marker)
+          end = ie.find(listener_marker)
+          if start < 0 or end < 0 or end <= start:
+              raise SystemExit('IE batch editor block not found')
+
+          block = ie[start:end].rstrip()
+          block = block.replace(
+              '  function setupIeBatchEditor() {\n    var form =',
+              '  function setupBatchEditorForModernEdge() {\n    if (document.documentMode) { return; }\n    var form =',
+              1
+          )
+          block = block.replace(
+              'IEモードでは一括編集内容をCSV保存後に確認してください。',
+              '一括編集内容をCSV保存後に確認してください。'
+          )
+          block = block.replace(
+              'IEモード：ローカルCSVを開き、複数件を編集して最後にCSVを保存できます。',
+              'ローカルCSVを開き、複数件を編集して最後にCSVを保存できます。'
+          )
+
+          closing = '\n}());'
+          pos = app.rfind(closing)
+          if pos < 0:
+              raise SystemExit('app.js closing marker not found')
+
+          addition = (
+              '\n\n  /* Modern Edge uses the same batch CSV editing workflow as IE mode. */\n'
+              + block
+              + '\n\n  document.addEventListener("DOMContentLoaded", setupBatchEditorForModernEdge);\n'
+          )
+          app = app[:pos] + addition + app[pos:]
+          app_path.write_text(app, encoding='utf-8')
+          PY
+
+          node --check js/app.js
+          grep -q 'function setupBatchEditorForModernEdge()' js/app.js
+          grep -q 'document.documentMode) { return; }' js/app.js
+          grep -q 'saveAllCsvButton' js/app.js
+          grep -q '【削除予定】' js/app.js
+
+      - name: Commit final app.js only
+        shell: bash
+        run: |
+          rm -f .github/workflows/patch-modern-edge-batch-once.yml
+          rm -f .github/normal-edge-batch-trigger.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No changes to commit'
+            exit 0
+          fi
+          git commit -m '通常EdgeでもCSV一括編集を有効化'
+          git push origin HEAD:main

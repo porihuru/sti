@@ -1,5 +1,6 @@
 name: Add IE11 local CSV editor fallback once
 
+# one-time trigger
 on:
   push:
     branches: [main]

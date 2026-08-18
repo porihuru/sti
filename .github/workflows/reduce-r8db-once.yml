@@ -1,0 +1,87 @@
+name: Reduce R8db once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/reduce-r8db-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  reduce:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reduce R8db.csv to one twentieth
+        shell: python
+        run: |
+          import csv
+          import io
+          from pathlib import Path
+
+          path = Path('db/R8db.csv')
+          raw = path.read_bytes()
+          had_bom = raw.startswith(b'\xef\xbb\xbf')
+          text = raw.decode('utf-8-sig')
+
+          with io.StringIO(text, newline='') as source:
+              rows = list(csv.reader(source))
+
+          if not rows:
+              raise SystemExit('R8db.csv is empty')
+
+          header = rows[0]
+          data = rows[1:]
+          expected_header = [
+              'id', 'Importance', 'difficult', 'category1', 'category2',
+              'original', 'question', 'explanation', 'notes1', 'notes2',
+              'notes3', 'notes4', 'notes5'
+          ]
+          if header != expected_header:
+              raise SystemExit(f'Unexpected header: {header!r}')
+          if len(data) != 2436:
+              raise SystemExit(f'Expected 2436 records, got {len(data)}')
+          if any(len(row) != 13 for row in data):
+              raise SystemExit('A record does not have exactly 13 columns')
+
+          target = round(len(data) / 20)
+          if target != 122:
+              raise SystemExit(f'Unexpected target count: {target}')
+
+          indexes = [round(i * (len(data) - 1) / (target - 1)) for i in range(target)]
+          if len(indexes) != len(set(indexes)):
+              raise SystemExit('Sampling produced duplicate indexes')
+          selected = [data[i] for i in indexes]
+
+          out = io.StringIO(newline='')
+          writer = csv.writer(out, lineterminator='\n')
+          writer.writerow(header)
+          writer.writerows(selected)
+          new_text = out.getvalue()
+          new_raw = new_text.encode('utf-8')
+          if had_bom:
+              new_raw = b'\xef\xbb\xbf' + new_raw
+          path.write_bytes(new_raw)
+
+          with io.StringIO(path.read_text(encoding='utf-8-sig'), newline='') as check_source:
+              check = list(csv.reader(check_source))
+          if len(check) - 1 != 122:
+              raise SystemExit(f'Validation failed: {len(check) - 1} records')
+          if check[0] != expected_header:
+              raise SystemExit('Header changed during rewrite')
+          if any(len(row) != 13 for row in check[1:]):
+              raise SystemExit('Column count changed during rewrite')
+          print(f'Reduced {len(data)} records to {len(check) - 1} records')
+          print(f'First ID: {check[1][0]}, last ID: {check[-1][0]}')
+      - name: Commit reduced database and remove this one-time workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/reduce-r8db-once.yml
+          git add db/R8db.csv
+          git commit -m "R8db.csvを20分の1に縮小"
+          git push origin HEAD:main

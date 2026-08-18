@@ -477,3 +477,70 @@
   .record-editor-actions .button,
   .editor-leave-actions .button { display: block; width: 100%; margin: 8px 0 0; }
 }
+
+/* Additional IE11 fallbacks for declarations containing CSS variables. */
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+  .site-header { border-bottom: 1px solid #d8d4c8; }
+  .main-nav button:hover { background: #dcece7; }
+
+  .hero-panel .button.secondary { color: #075e57; }
+  .hero-panel .button.secondary:hover {
+    color: #fff;
+    background: #075e57;
+    border-color: #075e57;
+  }
+
+  .mode-card,
+  .settings-card,
+  .start-card,
+  .question-card,
+  .feedback-panel,
+  .analysis-card,
+  .result-summary,
+  .report-conditions,
+  .result-details,
+  .editor-file-card,
+  .editor-toolbar,
+  .editor-records,
+  .record-editor {
+    border: 1px solid #d8d4c8;
+  }
+
+  .mode-card > p:not(.mode-label) { color: #4f615d; }
+  .field select,
+  .field input,
+  .editor-fields textarea { color: #18312d; }
+
+  .form-section { border-bottom: 1px solid #d8d4c8; }
+  .condition-list div { border-bottom: 1px solid #d8d4c8; }
+  .reader-toolbar { border-bottom: 1px solid #d8d4c8; }
+  .count-presets button,
+  .text-size-buttons button { border: 1px solid #d8d4c8; }
+
+  .judge-button { border: 2px solid #d8d4c8; }
+  .judge-button.correct-choice:hover { color: #075e57; }
+  .judge-button.chosen { box-shadow: inset 0 0 0 2px #18312d; }
+  .choice-button.answer-correct { border-color: #087f73; }
+
+  .feedback-section .correct-law { border-top: 1px solid #d8d4c8; }
+  .law-modal-header { border-bottom: 1px solid #d8d4c8; }
+  .summary-stat { border-left: 1px solid #d8d4c8; }
+  .result-entry { border-top: 1px solid #d8d4c8; }
+  .weak-table th,
+  .weak-table td { border-top: 1px solid #d8d4c8; }
+  .record-editor-actions { border-top: 1px solid #d8d4c8; }
+
+  .report-conditions > * {
+    margin-right: 25px;
+    margin-bottom: 10px;
+  }
+  .law-modal-header > * + *,
+  .record-editor-heading > * + *,
+  .record-editor-heading-side > * + * { margin-left: 12px; }
+}
+
+@media all and (-ms-high-contrast: none) and (max-width: 520px),
+       (-ms-high-contrast: active) and (max-width: 520px) {
+  .main-nav { border-top: 1px solid #d8d4c8; }
+  .summary-stat { border-left: 0; }
+}

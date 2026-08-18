@@ -25,5 +25,9 @@ assert.ok(!/(^|[;{\s])gap\s*:/i.test(cssWithoutComments), "ie11.cssに未対応�
 assert.ok(!/\b(?:min|max|clamp)\s*\(/i.test(cssWithoutComments), "ie11.cssに未対応のmin/max/clamp関数が含まれています");
 assert.ok(!/(^|[;{\s])inset\s*:/i.test(cssWithoutComments), "ie11.cssに未対応のinsetが含まれています");
 assert.ok(!/position\s*:\s*sticky\s*;/i.test(cssWithoutComments), "ie11.cssに未対応のsticky指定が含まれています");
+assert.ok(cssSource.indexOf("border: 11px solid #dcece7;") >= 0, "IE11用の正答率リング境界線がありません");
+assert.ok(cssSource.indexOf("border-left: 5px solid #244a61;") >= 0, "IE11用の条文左境界線がありません");
+assert.ok(cssSource.indexOf("border-top: 6px solid #087f73;") >= 0, "IE11用の正解パネル上境界線がありません");
+assert.ok(cssSource.indexOf("border-top: 6px solid #c95c4b;") >= 0, "IE11用の不正解パネル上境界線がありません");
 
 console.log("IE11 compatibility layer validation passed");

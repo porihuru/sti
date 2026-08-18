@@ -296,13 +296,6 @@
 
     updateStartField();
     updatePresetButtons();
-    byId("selectedModeName").textContent = modeNames[config.mode];
-    byId("eligibleCount").textContent = state.ready ? eligible.length + "件" : "--件";
-    byId("conditionCategory").textContent = config.category === "all" ? "すべて" : config.category;
-    byId("conditionRelatedGroup").textContent = config.relatedGroup === "all" ? "すべて" : config.relatedGroup;
-    byId("conditionImportance").textContent = config.importance === 1 ? "1のみ" : "1～" + config.importance;
-    byId("conditionDifficulty").textContent = config.difficulty === "初級" ? "初級のみ" : "初級～" + config.difficulty;
-
     if (state.ready && eligible.length === 0) {
       message = "条件に該当する条文がありません。";
     } else if (state.ready && (config.mode === "fourCorrect" || config.mode === "fourWrong") && eligible.length < 4) {
@@ -1660,6 +1653,19 @@
     byId("startButton").disabled = true;
   }
 
+  function verifyBrandBeforeDbLoad() {
+    var brand = byId("brandMark");
+    var gate = byId("dbIntegrityGate");
+    var value = brand ? String(brand.textContent || "") : "";
+    if (value !== "北会") {
+      gate.hidden = false;
+      setLoading("ブランド文字を確認できないためDBを開けません。", "error");
+      return false;
+    }
+    gate.hidden = true;
+    return true;
+  }
+
   function init() {
     setupEvents();
     updateEditorCapability();
@@ -1670,7 +1676,9 @@
     if (!STIHistory.cookiesAvailable()) {
       showToast("Cookieが利用できません。ブラウザの設定をご確認ください。");
     }
-    STICsv.load("db/R8db.csv", dataLoaded, dataFailed);
+    if (verifyBrandBeforeDbLoad()) {
+      STICsv.load("db/R8db.csv", dataLoaded, dataFailed);
+    }
   }
 
   init();

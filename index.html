@@ -20,7 +20,7 @@
   <div class="app-shell">
     <header class="site-header">
       <button class="brand-button" id="homeButton" type="button" aria-label="ホームへ戻る">
-        <span class="brand-mark" aria-hidden="true">条</span>
+        <span class="brand-mark" id="brandMark" aria-hidden="true">北会</span>
         <span>
           <span class="brand-title">NAF-CSM</span>
           <span class="brand-subtitle">会計法規トレーニング</span>
@@ -38,6 +38,14 @@
       <span class="loading-dot" aria-hidden="true"></span>
       <span id="loadingText">条文データを読み込んでいます…</span>
       <button class="preview-exit-button" id="exitPreviewButton" type="button" hidden>通常DBへ戻す</button>
+    </div>
+
+    <div class="db-integrity-gate" id="dbIntegrityGate" role="alert" hidden>
+      <div class="db-integrity-panel">
+        <p class="eyebrow">DB INTEGRITY CHECK</p>
+        <h1>DBを開けません</h1>
+        <p>左上のブランド文字を確認できないため、条文データにはアクセスしていません。</p>
+      </div>
     </div>
 
     <main id="mainContent">
@@ -197,10 +205,13 @@
                   <span id="startValueLabel">開始ID</span>
                   <input id="startValueInput" type="number" min="1" value="1" inputmode="numeric">
                 </label>
-                <label class="field">
-                  <span>出題数</span>
-                  <input id="questionCount" type="number" min="1" max="200" value="10" inputmode="numeric" required>
-                </label>
+                <div class="count-action-field">
+                  <label class="field">
+                    <span>出題数</span>
+                    <input id="questionCount" type="number" min="1" max="200" value="10" inputmode="numeric" required>
+                  </label>
+                  <button class="button primary" id="startButton" type="submit" disabled>この条件で始める</button>
+                </div>
               </div>
               <div class="count-presets" aria-label="出題数の候補">
                 <button type="button" data-count="5">5問</button>
@@ -209,23 +220,10 @@
                 <button type="button" data-count="30">30問</button>
                 <button type="button" data-count="50">50問</button>
               </div>
+              <p class="form-message" id="formMessage" role="alert"></p>
+              <p class="start-note">学習結果はこのブラウザのCookieに保存されます。</p>
             </div>
           </div>
-
-          <aside class="start-card">
-            <p class="card-kicker">選択中の条件</p>
-            <h2 id="selectedModeName">正しい条文を選ぶ</h2>
-            <dl class="condition-list">
-              <div><dt>対象件数</dt><dd id="eligibleCount">--件</dd></div>
-              <div><dt>大分類</dt><dd id="conditionCategory">すべて</dd></div>
-              <div><dt>関連法規</dt><dd id="conditionRelatedGroup">すべて</dd></div>
-              <div><dt>重要度</dt><dd id="conditionImportance">1～4</dd></div>
-              <div><dt>難易度</dt><dd id="conditionDifficulty">初級～上級</dd></div>
-            </dl>
-            <p class="form-message" id="formMessage" role="alert"></p>
-            <button class="button primary full" id="startButton" type="submit" disabled>この条件で始める</button>
-            <p class="start-note">学習結果はこのブラウザのCookieに保存されます。</p>
-          </aside>
         </form>
       </section>
 

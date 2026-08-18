@@ -544,3 +544,16 @@
   .main-nav { border-top: 1px solid #d8d4c8; }
   .summary-stat { border-left: 0; }
 }
+
+/* Final fallbacks for border shorthands invalidated by CSS variables. */
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+  .score-ring {
+    border: 11px solid #dcece7;
+    border-top-color: #087f73;
+  }
+  .law-text { border-left: 5px solid #244a61; }
+  .feedback-panel.correct { border-top: 6px solid #087f73; }
+  .feedback-panel.incorrect { border-top: 6px solid #c95c4b; }
+  .button.secondary:hover,
+  .button.quiet:hover { color: #075e57; }
+}

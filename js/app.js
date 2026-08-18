@@ -2152,12 +2152,12 @@
         text = STILocalDb.serialize(rows);
         STILocalDb.parse(text, batch.filename);
       } catch (error) { setMessage(error.message); return; }
-      setMessage("Windowsの保存画面を開いています…");
+      setMessage("CSVへ保存しています…");
       batch.fileHandle.createWritable().then(function (writable) {
         return writable.write(text).then(function () { return writable.close(); });
       }).then(function () {
         byId("saveAllCsvButton").textContent = "CSVを再保存";
-        setMessage("保存画面で元のR8db.csvを指定し、上書きしてください。変更内容は画面内にも残しています。");
+        setMessage("変更内容をローカルCSVへ保存しました。");
       }).catch(function () {
         setMessage("CSV保存を開始できませんでした。変更内容は画面内に残っています。");
       });

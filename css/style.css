@@ -782,3 +782,309 @@ body.modal-open { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   *, *:before, *:after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* Compact CSV editor layout for modern browsers. */
+@media screen {
+  #editorView { padding-top: 12px; }
+
+  .editor-compact-header,
+  .editor-compact-title,
+  .editor-compact-file,
+  .editor-toolbar-compact,
+  .editor-change-summary,
+  .editor-toolbar-actions,
+  .record-search-row,
+  .record-status-legend,
+  .record-editor-heading-compact,
+  .record-editor-heading-side,
+  .record-editor-heading-actions,
+  .compact-editor-fields-all {
+    display: -ms-flexbox;
+    display: flex;
+  }
+
+  .editor-compact-file,
+  .editor-toolbar-compact,
+  .compact-editor-fields-all {
+    -ms-flex-wrap: wrap;
+    flex-wrap: wrap;
+  }
+
+  .editor-compact-header {
+    -ms-flex-align: center;
+    align-items: center;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    background: #fffdf8;
+    border: 1px solid #d8d4c8;
+    border-radius: 12px;
+  }
+  .editor-compact-title {
+    -ms-flex: 0 0 auto;
+    flex: 0 0 auto;
+    -ms-flex-align: center;
+    align-items: center;
+    margin-right: 18px;
+  }
+  .editor-compact-title .eyebrow { margin: 0 0 2px; }
+  .editor-compact-title h1 {
+    margin: 0;
+    font-size: 22px;
+    line-height: 1.2;
+  }
+  .editor-compact-title .local-only-badge { margin-left: 10px; }
+  .editor-compact-file {
+    -ms-flex: 1 1 auto;
+    flex: 1 1 auto;
+    -ms-flex-align: center;
+    align-items: center;
+    min-width: 0;
+  }
+  .editor-compact-file .file-picker-button {
+    margin: 0 10px 0 0;
+    padding: 7px 12px;
+  }
+  .editor-compact-file .editor-file-summary {
+    width: auto;
+    -ms-flex: 1 1 260px;
+    flex: 1 1 260px;
+    margin: 0;
+    min-width: 0;
+  }
+  .editor-compact-file .editor-message {
+    width: 100%;
+    margin: 4px 0 0;
+    line-height: 1.3;
+  }
+
+  .editor-toolbar-compact {
+    -ms-flex-align: center;
+    align-items: center;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    border-radius: 12px;
+  }
+  .editor-toolbar-file {
+    -ms-flex: 1 1 180px;
+    flex: 1 1 180px;
+    min-width: 120px;
+    margin-right: 10px;
+  }
+  .editor-change-summary {
+    -ms-flex: 0 1 auto;
+    flex: 0 1 auto;
+    -ms-flex-align: center;
+    align-items: center;
+    margin-right: 10px;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+  .editor-change-summary > * { margin-right: 8px; }
+  .editor-change-summary .change-added { color: #276738; }
+  .editor-change-summary .change-edited { color: #8a6100; }
+  .editor-change-summary .change-deleted { color: #9d3329; }
+  .editor-toolbar-actions {
+    -ms-flex: 0 0 auto;
+    flex: 0 0 auto;
+    -ms-flex-align: center;
+    align-items: center;
+  }
+  .editor-toolbar-actions .button {
+    padding: 7px 10px;
+    min-height: 32px;
+  }
+  .editor-toolbar-actions > * + * { margin-left: 6px; }
+
+  .editor-layout-compact { -ms-flex-align: start; align-items: flex-start; }
+  .editor-records-compact {
+    width: 300px;
+    -ms-flex: 0 0 300px;
+    flex: 0 0 300px;
+    padding: 10px;
+    margin-right: 12px;
+    border-radius: 12px;
+  }
+  .record-search-row {
+    -ms-flex-align: end;
+    align-items: flex-end;
+    margin-bottom: 5px;
+  }
+  .record-search-field {
+    -ms-flex: 1 1 auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-right: 8px;
+  }
+  .record-search-field > span { margin-bottom: 3px; }
+  .record-search-field input {
+    height: 32px;
+    padding: 5px 7px;
+  }
+  .record-search-row .record-count {
+    -ms-flex: 0 0 auto;
+    flex: 0 0 auto;
+    margin: 0 0 6px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .record-status-legend {
+    -ms-flex-align: center;
+    align-items: center;
+    margin: 0 0 6px;
+    font-size: 11px;
+  }
+  .record-status-legend span {
+    display: inline-block;
+    padding: 2px 5px;
+    margin-right: 4px;
+    border: 1px solid #d8d4c8;
+  }
+  .record-status-normal { background: #ffffff; }
+  .record-status-added { background: #e6f4ea; color: #276738; }
+  .record-status-edited { background: #fff3cd; color: #8a6100; }
+  .record-status-deleted { background: #fde8e7; color: #9d3329; text-decoration: line-through; }
+  .record-list {
+    display: block;
+    max-height: 520px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 3px;
+  }
+  .record-list-item {
+    font-family: "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+  .record-navigation { margin-top: 7px; }
+  .record-navigation .button {
+    min-height: 30px;
+    padding: 5px 8px;
+  }
+
+  .record-editor-compact {
+    padding: 12px 14px;
+    border-radius: 12px;
+  }
+  .record-editor-heading-compact {
+    -ms-flex-align: center;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-bottom: 7px;
+    border-bottom: 1px solid #d8d4c8;
+  }
+  .record-editor-heading-compact > div:first-child {
+    -ms-flex: 1 1 auto;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .record-editor-heading-compact .card-kicker { margin: 0 0 2px; }
+  .record-editor-heading-compact h2 {
+    margin: 0;
+    font-size: 18px;
+  }
+  .record-editor-heading-side {
+    -ms-flex: 0 0 auto;
+    flex: 0 0 auto;
+    -ms-flex-align: center;
+    align-items: center;
+  }
+  .record-editor-heading-actions .button {
+    min-height: 31px;
+    padding: 5px 9px;
+  }
+
+  .compact-editor-fields-all {
+    margin-right: -8px;
+    margin-bottom: 2px;
+  }
+  .compact-editor-fields-all > .field {
+    width: auto;
+    margin: 0 8px 7px 0;
+  }
+  .compact-editor-fields-all .field > span {
+    margin-bottom: 2px;
+    font-size: 11px;
+    line-height: 1.2;
+  }
+  .compact-editor-fields-all input,
+  .compact-editor-fields-all select {
+    height: 32px;
+    padding: 4px 6px;
+    font-size: 13px;
+  }
+  .compact-field-id { -ms-flex: 0 0 72px; flex: 0 0 72px; }
+  .compact-field-short { -ms-flex: 0 0 82px; flex: 0 0 82px; }
+  .compact-field-category { -ms-flex: 0 0 94px; flex: 0 0 94px; }
+  .compact-field-group { -ms-flex: 1 1 180px; flex: 1 1 180px; min-width: 150px; }
+  .compact-field-date { -ms-flex: 0 0 112px; flex: 0 0 112px; }
+  .compact-field-nickname { -ms-flex: 1 1 135px; flex: 1 1 135px; min-width: 120px; }
+  .compact-field-note { -ms-flex: 1 1 105px; flex: 1 1 105px; min-width: 90px; }
+
+  .long-editor-fields-compact > .field {
+    width: 100%;
+    margin-bottom: 7px;
+  }
+  .long-editor-fields-compact .field > span {
+    margin-bottom: 2px;
+    font-size: 11px;
+  }
+  .long-editor-fields-compact textarea {
+    min-height: 58px;
+    max-height: 180px;
+    overflow-y: auto;
+    padding: 7px 8px;
+    line-height: 1.45;
+  }
+  .record-editor-compact .editor-message {
+    margin: 4px 0;
+    min-height: 0;
+  }
+  .record-editor-actions-compact {
+    padding-top: 7px;
+    margin-top: 5px;
+  }
+  .record-editor-actions-compact .button {
+    min-height: 32px;
+    padding: 6px 10px;
+  }
+}
+
+@media (max-width: 960px) {
+  .editor-compact-header { display: block; }
+  .editor-compact-title { margin: 0 0 8px; }
+  .editor-records-compact {
+    width: auto;
+    margin: 0 0 10px;
+  }
+  .record-list { max-height: 220px; }
+  .compact-field-group,
+  .compact-field-nickname { -ms-flex-basis: 220px; flex-basis: 220px; }
+}
+
+@media (max-width: 720px) {
+  .editor-toolbar-compact { display: block; }
+  .editor-change-summary { margin: 6px 0; }
+  .editor-toolbar-actions { margin-top: 6px; }
+  .editor-compact-file .file-picker-button { width: auto; margin: 0 10px 0 0; }
+  .compact-field-id,
+  .compact-field-short,
+  .compact-field-category { -ms-flex: 1 1 90px; flex: 1 1 90px; }
+  .compact-field-group,
+  .compact-field-date,
+  .compact-field-nickname,
+  .compact-field-note { -ms-flex: 1 1 150px; flex: 1 1 150px; }
+}
+
+
+/* Modern browsers need the editor column layout explicitly. */
+.editor-layout-compact {
+  display: flex;
+  align-items: flex-start;
+}
+.record-editor-compact {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+@media (max-width: 960px) {
+  .editor-layout-compact { display: block; }
+}

@@ -1,0 +1,626 @@
+name: Patch app memory editor once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-app-memory-editor-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch app.js
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('js/app.js')
+          text = path.read_text(encoding='utf-8')
+
+          old_state = '''      rows: [],
+                filename: "",
+                outputFilename: "",
+                nickname: "",
+                fileHandle: null,
+                currentId: null,
+                previousId: null,
+                isNew: false,
+                dirty: false,
+                pendingAction: null'''
+          new_state = '''      rows: [],
+                originalRows: [],
+                originalById: {},
+                changes: {},
+                deletedPrevious: {},
+                filename: "",
+                outputFilename: "",
+                nickname: "",
+                fileHandle: null,
+                currentId: null,
+                previousId: null,
+                isNew: false,
+                dirty: false,
+                pendingAction: null'''
+          if text.count(old_state) != 1:
+              raise SystemExit('editor state block not found exactly once')
+          text = text.replace(old_state, new_state, 1)
+
+          start_marker = '  function setEditorDirty(dirty) {'
+          end_marker = '  function navigateEditorRecord(direction) {'
+          start = text.index(start_marker)
+          end = text.index(end_marker)
+
+          new_block = r'''  function setEditorDirty(dirty) {
+            state.editor.dirty = !!dirty;
+            byId("unsavedBadge").hidden = !state.editor.dirty;
+          }
+
+          function editorHasChanges() {
+            var key;
+            for (key in state.editor.changes) {
+              if (state.editor.changes.hasOwnProperty(key) && state.editor.changes[key]) { return true; }
+            }
+            return false;
+          }
+
+          function editorStatus(id) {
+            return state.editor.changes[String(id)] || "";
+          }
+
+          function updateEditorChangeSummary() {
+            var added = 0;
+            var edited = 0;
+            var deleted = 0;
+            var key;
+            var status;
+            for (key in state.editor.changes) {
+              if (!state.editor.changes.hasOwnProperty(key)) { continue; }
+              status = state.editor.changes[key];
+              if (status === "added") { added += 1; }
+              else if (status === "edited") { edited += 1; }
+              else if (status === "deleted") { deleted += 1; }
+            }
+            byId("editorAddedCount").textContent = added;
+            byId("editorEditedCount").textContent = edited;
+            byId("editorDeletedCount").textContent = deleted;
+            byId("saveAllCsvButton").disabled = added + edited + deleted === 0;
+          }
+
+          function indexEditorOriginalRows(rows) {
+            var i;
+            state.editor.originalRows = cloneRows(rows);
+            state.editor.originalById = {};
+            for (i = 0; i < state.editor.originalRows.length; i += 1) {
+              state.editor.originalById[String(state.editor.originalRows[i].id)] = cloneRow(state.editor.originalRows[i]);
+            }
+          }
+
+          function activeEditorRows() {
+            var result = [];
+            var i;
+            for (i = 0; i < state.editor.rows.length; i += 1) {
+              if (editorStatus(state.editor.rows[i].id) !== "deleted") {
+                result.push(cloneRow(state.editor.rows[i]));
+              }
+            }
+            result.sort(function (a, b) { return a.id - b.id; });
+            return result;
+          }
+
+          function editorRowsEqual(a, b) {
+            var fields = [
+              "id", "importance", "difficulty", "category1", "category2", "original",
+              "question", "explanation", "notes2", "notes3", "notes4", "notes5"
+            ];
+            var i;
+            if (!a || !b) { return false; }
+            for (i = 0; i < fields.length; i += 1) {
+              if (String(a[fields[i]] === undefined ? "" : a[fields[i]]) !==
+                  String(b[fields[i]] === undefined ? "" : b[fields[i]])) { return false; }
+            }
+            return true;
+          }
+
+          function currentEditorRow() {
+            var i;
+            for (i = 0; i < state.editor.rows.length; i += 1) {
+              if (state.editor.rows[i].id === state.editor.currentId) { return state.editor.rows[i]; }
+            }
+            return null;
+          }
+
+          function resizeEditorTextarea(textarea) {
+            if (!textarea) { return; }
+            textarea.style.height = "auto";
+            textarea.style.height = textarea.scrollHeight + "px";
+          }
+
+          function resizeEditorTextareas() {
+            if (byId("editorWorkspace").hidden || activeViewId() !== "editorView") { return; }
+            resizeEditorTextarea(byId("editOriginal"));
+            resizeEditorTextarea(byId("editQuestion"));
+            resizeEditorTextarea(byId("editExplanation"));
+          }
+
+          function setEditorFieldsDisabled(disabled, isNew) {
+            var ids = editorFieldIds();
+            var i;
+            for (i = 0; i < ids.length; i += 1) { byId(ids[i]).disabled = !!disabled; }
+            byId("editId").readOnly = !isNew;
+            byId("editNotes1").disabled = false;
+            byId("editNotes1").readOnly = true;
+          }
+
+          function fillEditorForm(row, isNew) {
+            var status = isNew ? "" : editorStatus(row.id);
+            var deleted = status === "deleted";
+            byId("editId").value = row.id || "";
+            byId("editImportance").value = String(row.importance || 1);
+            byId("editDifficulty").value = row.difficulty || "初級";
+            byId("editCategory1").value = row.category1 || row.category || "";
+            byId("editCategory2").value = row.category2 || "";
+            byId("editOriginal").value = row.original || "";
+            byId("editQuestion").value = row.question || "";
+            byId("editExplanation").value = row.explanation || "";
+            byId("editNotes1").value = row.notes1 || STILocalDb.dateStamp();
+            byId("editNotes2").value = row.notes2 && row.notes2 !== "-" ? row.notes2 : (state.editor.nickname || "");
+            byId("editNotes3").value = row.notes3 || "";
+            byId("editNotes4").value = row.notes4 || "";
+            byId("editNotes5").value = row.notes5 || "";
+            setEditorFieldsDisabled(deleted, isNew);
+            resizeEditorTextareas();
+            if (deleted) { byId("recordEditorTitle").textContent = "ID " + row.id + "（削除予定）"; }
+            else if (status === "added") { byId("recordEditorTitle").textContent = "ID " + row.id + "（追加）"; }
+            else if (status === "edited") { byId("recordEditorTitle").textContent = "ID " + row.id + "（編集済み）"; }
+            else { byId("recordEditorTitle").textContent = isNew ? "新しいレコード" : "ID " + row.id + "を編集"; }
+            byId("deleteRecordButton").disabled = !!isNew;
+            byId("deleteRecordButtonTop").disabled = !!isNew;
+            byId("deleteRecordButton").textContent = deleted ? "削除を取り消す" : "削除";
+            byId("deleteRecordButtonTop").textContent = deleted ? "削除を取り消す" : "削除";
+            byId("saveRecordButton").disabled = deleted;
+            byId("saveRecordButtonTop").disabled = deleted;
+            byId("recordEditorMessage").textContent = deleted ? "このレコードは削除予定です。CSV保存までは取り消せます。" : "";
+            setEditorDirty(!!isNew);
+          }
+
+          function editorSearchRows() {
+            var query = byId("editorSearch").value.replace(/^\s+|\s+$/g, "").toLowerCase();
+            var result = [];
+            var i;
+            var row;
+            var haystack;
+            for (i = 0; i < state.editor.rows.length; i += 1) {
+              row = state.editor.rows[i];
+              haystack = [row.id, row.category1, row.category2, row.original].join(" ").toLowerCase();
+              if (!query || haystack.indexOf(query) >= 0) { result.push(row); }
+            }
+            return result;
+          }
+
+          function recordStatusLabel(status) {
+            if (status === "added") { return "【追加】"; }
+            if (status === "edited") { return "【編集】"; }
+            if (status === "deleted") { return "【削除予定】"; }
+            return "";
+          }
+
+          function styleRecordListItem(button, status) {
+            button.style.display = "block";
+            button.style.width = "100%";
+            button.style.textAlign = "left";
+            button.style.margin = "0 0 3px 0";
+            button.style.padding = "7px 8px";
+            button.style.border = "1px solid #cfd8dc";
+            button.style.cursor = "pointer";
+            button.style.backgroundColor = "#ffffff";
+            if (status === "added") { button.style.backgroundColor = "#e6f4ea"; }
+            else if (status === "edited") { button.style.backgroundColor = "#fff3cd"; }
+            else if (status === "deleted") {
+              button.style.backgroundColor = "#fde8e7";
+              button.style.textDecoration = "line-through";
+            }
+          }
+
+          function renderEditorRecordList() {
+            var select = byId("editorRecordSelect");
+            var list = byId("editorRecordList");
+            var rows = editorSearchRows();
+            var option;
+            var button;
+            var status;
+            var label;
+            var i;
+            clear(select);
+            clear(list);
+            list.hidden = false;
+            select.hidden = true;
+            for (i = 0; i < rows.length; i += 1) {
+              status = editorStatus(rows[i].id);
+              label = recordStatusLabel(status) + rows[i].id + "｜" + (rows[i].category2 || rows[i].category1) + "｜" + shorten(rows[i].original, 28);
+              option = element("option", "", label);
+              option.value = String(rows[i].id);
+              if (!state.editor.isNew && rows[i].id === state.editor.currentId) { option.selected = true; }
+              select.appendChild(option);
+
+              button = element("button", "record-list-item" + (status ? " record-list-item-" + status : ""), label);
+              button.type = "button";
+              button.setAttribute("role", "option");
+              button.setAttribute("data-record-id", String(rows[i].id));
+              button.setAttribute("aria-selected", rows[i].id === state.editor.currentId ? "true" : "false");
+              styleRecordListItem(button, status);
+              if (rows[i].id === state.editor.currentId) { button.style.fontWeight = "700"; }
+              button.addEventListener("click", function (event) {
+                var id = event.currentTarget.getAttribute("data-record-id");
+                requestEditorAction(function () { openEditorRecord(id); });
+              });
+              list.appendChild(button);
+            }
+            byId("editorRecordCount").textContent = rows.length.toLocaleString("ja-JP") + "件表示／全" + state.editor.rows.length.toLocaleString("ja-JP") + "件";
+            updateEditorChangeSummary();
+            updateEditorNavigation(rows);
+          }
+
+          function updateEditorNavigation(rows) {
+            var currentIndex = -1;
+            var i;
+            for (i = 0; i < rows.length; i += 1) {
+              if (rows[i].id === state.editor.currentId) { currentIndex = i; break; }
+            }
+            byId("previousRecordButton").disabled = state.editor.isNew || currentIndex <= 0;
+            byId("nextRecordButton").disabled = state.editor.isNew || currentIndex < 0 || currentIndex >= rows.length - 1;
+          }
+
+          function openEditorRecord(id) {
+            var row;
+            var parsedId = parseInt(id, 10);
+            var i;
+            for (i = 0; i < state.editor.rows.length; i += 1) {
+              if (state.editor.rows[i].id === parsedId) { row = state.editor.rows[i]; break; }
+            }
+            if (!row) { return; }
+            state.editor.currentId = row.id;
+            state.editor.previousId = null;
+            state.editor.isNew = false;
+            fillEditorForm(row, false);
+            renderEditorRecordList();
+          }
+
+          function requestEditorAction(action) {
+            if (!state.editor.dirty) { action(); return; }
+            state.editor.pendingAction = action;
+            byId("editorLeaveModal").hidden = false;
+            byId("continueEditingButton").focus();
+          }
+
+          function closeEditorLeaveModal() {
+            byId("editorLeaveModal").hidden = true;
+          }
+
+          function runPendingEditorAction() {
+            var action = state.editor.pendingAction;
+            state.editor.pendingAction = null;
+            closeEditorLeaveModal();
+            if (action) { action(); }
+          }
+
+          function addEditorRecord() {
+            var maxId = 0;
+            var i;
+            for (i = 0; i < state.editor.rows.length; i += 1) {
+              if (state.editor.rows[i].id > maxId) { maxId = state.editor.rows[i].id; }
+            }
+            state.editor.previousId = state.editor.currentId;
+            state.editor.currentId = null;
+            state.editor.isNew = true;
+            byId("editorSearch").value = "";
+            byId("editorRecordSelect").selectedIndex = -1;
+            fillEditorForm({ id: maxId + 1, importance: 1, difficulty: "初級", notes2: state.editor.nickname || "" }, true);
+            byId("editCategory1").focus();
+          }
+
+          function editorRowFromForm() {
+            var nickname = STILocalDb.validateNickname(byId("editNotes2").value);
+            var row = {
+              id: parseInt(byId("editId").value, 10),
+              importance: parseInt(byId("editImportance").value, 10),
+              difficulty: byId("editDifficulty").value,
+              category1: byId("editCategory1").value.replace(/^\s+|\s+$/g, ""),
+              category2: byId("editCategory2").value.replace(/^\s+|\s+$/g, ""),
+              original: byId("editOriginal").value.replace(/^\s+|\s+$/g, ""),
+              question: byId("editQuestion").value.replace(/^\s+|\s+$/g, ""),
+              explanation: byId("editExplanation").value.replace(/^\s+|\s+$/g, ""),
+              notes1: STILocalDb.dateStamp(),
+              notes2: nickname,
+              notes3: byId("editNotes3").value,
+              notes4: byId("editNotes4").value,
+              notes5: byId("editNotes5").value
+            };
+            row.category = row.category1;
+            return row;
+          }
+
+          function makeEditorCandidate(row) {
+            var result = [];
+            var replaced = false;
+            var i;
+            for (i = 0; i < state.editor.rows.length; i += 1) {
+              if (!state.editor.isNew && state.editor.rows[i].id === state.editor.currentId) {
+                result.push(row);
+                replaced = true;
+              } else {
+                result.push(cloneRow(state.editor.rows[i]));
+              }
+            }
+            if (!replaced) { result.push(row); }
+            result.sort(function (a, b) { return a.id - b.id; });
+            return result;
+          }
+
+          function writeCsvToHandle(handle, text, filename, onSuccess, onError) {
+            handle.createWritable().then(function (writable) {
+              return writable.write(text).then(function () { return writable.close(); });
+            }).then(function () {
+              state.editor.fileHandle = handle;
+              onSuccess(filename);
+            }).catch(onError);
+          }
+
+          function requestReadWritePermission(handle, onSuccess, onError) {
+            var options = { mode: "readwrite" };
+            if (!handle || !handle.requestPermission || !handle.queryPermission) {
+              onError(new Error("このブラウザーではCSVへの書き込み権限を取得できません。"));
+              return;
+            }
+            handle.queryPermission(options).then(function (permission) {
+              if (permission === "granted") { onSuccess(); return; }
+              return handle.requestPermission(options).then(function (requested) {
+                if (requested === "granted") { onSuccess(); return; }
+                onError(new Error("CSVへの書き込みが許可されませんでした。"));
+              });
+            }).catch(onError);
+          }
+
+          function overwriteLocalCsv(text, filename, onSuccess, onError) {
+            if (!state.editor.fileHandle) {
+              onError(new Error("書き込み可能なCSVが開かれていません。"));
+              return;
+            }
+            requestReadWritePermission(state.editor.fileHandle, function () {
+              writeCsvToHandle(state.editor.fileHandle, text, filename, onSuccess, onError);
+            }, onError);
+          }
+
+          function saveEditorRecord(afterSave) {
+            var form = byId("recordEditorForm");
+            var row;
+            var rows;
+            var original;
+            var status;
+            var i;
+            if (!form.checkValidity()) {
+              if (form.reportValidity) { form.reportValidity(); }
+              byId("recordEditorMessage").textContent = "必須項目を入力してください。";
+              return;
+            }
+            try { row = editorRowFromForm(); }
+            catch (error) { byId("recordEditorMessage").textContent = error.message; return; }
+
+            if (state.editor.isNew) {
+              for (i = 0; i < state.editor.rows.length; i += 1) {
+                if (state.editor.rows[i].id === row.id) {
+                  byId("recordEditorMessage").textContent = "同じIDが既に存在します。";
+                  return;
+                }
+              }
+              rows = makeEditorCandidate(row);
+              state.editor.changes[String(row.id)] = "added";
+            } else {
+              status = editorStatus(state.editor.currentId);
+              if (status === "deleted") {
+                byId("recordEditorMessage").textContent = "削除予定を取り消してから編集してください。";
+                return;
+              }
+              original = state.editor.originalById[String(state.editor.currentId)];
+              if (original && editorRowsEqual(row, original)) {
+                row.notes1 = original.notes1;
+                delete state.editor.changes[String(state.editor.currentId)];
+              } else if (status !== "added") {
+                state.editor.changes[String(state.editor.currentId)] = "edited";
+              }
+              rows = makeEditorCandidate(row);
+            }
+
+            state.editor.rows = rows;
+            state.editor.nickname = row.notes2;
+            state.editor.currentId = row.id;
+            state.editor.previousId = null;
+            state.editor.isNew = false;
+            setEditorDirty(false);
+            renderEditorRecordList();
+            openEditorRecord(row.id);
+            showToast("ID " + row.id + "の変更を確定しました。最後にCSVを保存してください。");
+            if (afterSave) { afterSave(); }
+          }
+
+          function deleteEditorRecordNow() {
+            var current = currentEditorRow();
+            var status;
+            var previous;
+            var rows = [];
+            var activeRows;
+            var nextId = null;
+            var i;
+            if (!current) { return; }
+            status = editorStatus(current.id);
+
+            if (status === "deleted") {
+              previous = state.editor.deletedPrevious[String(current.id)] || "";
+              if (previous) { state.editor.changes[String(current.id)] = previous; }
+              else { delete state.editor.changes[String(current.id)]; }
+              delete state.editor.deletedPrevious[String(current.id)];
+              renderEditorRecordList();
+              openEditorRecord(current.id);
+              showToast("ID " + current.id + "の削除予定を取り消しました。");
+              return;
+            }
+
+            activeRows = activeEditorRows();
+            if (activeRows.length <= 1) {
+              byId("recordEditorMessage").textContent = "最後の1件は削除できません。";
+              return;
+            }
+            if (!window.confirm("ID " + current.id + "を削除予定にしますか？CSV保存までは取り消せます。")) { return; }
+
+            if (status === "added") {
+              for (i = 0; i < state.editor.rows.length; i += 1) {
+                if (state.editor.rows[i].id !== current.id) { rows.push(cloneRow(state.editor.rows[i])); }
+              }
+              delete state.editor.changes[String(current.id)];
+              delete state.editor.deletedPrevious[String(current.id)];
+              state.editor.rows = rows;
+              nextId = rows.length ? rows[Math.min(0, rows.length - 1)].id : null;
+              state.editor.currentId = nextId;
+              setEditorDirty(false);
+              renderEditorRecordList();
+              if (nextId !== null) { openEditorRecord(nextId); }
+              showToast("未保存の追加レコードを取り消しました。");
+              return;
+            }
+
+            state.editor.deletedPrevious[String(current.id)] = status;
+            state.editor.changes[String(current.id)] = "deleted";
+            setEditorDirty(false);
+            renderEditorRecordList();
+            openEditorRecord(current.id);
+            showToast("ID " + current.id + "を削除予定にしました。");
+          }
+
+          function saveAllEditorCsv() {
+            var rows;
+            var filename = state.editor.filename;
+            var text;
+            var currentId = state.editor.currentId;
+            var i;
+            var exists = false;
+            if (!editorHasChanges()) { return; }
+            rows = activeEditorRows();
+            try {
+              text = STILocalDb.serialize(rows);
+              STILocalDb.parse(text, filename);
+            } catch (error) {
+              byId("editorMessage").textContent = error.message;
+              return;
+            }
+            byId("editorMessage").textContent = "CSV保存を開始します…";
+            overwriteLocalCsv(text, filename, function () {
+              state.editor.rows = cloneRows(rows);
+              indexEditorOriginalRows(rows);
+              state.editor.changes = {};
+              state.editor.deletedPrevious = {};
+              for (i = 0; i < rows.length; i += 1) {
+                if (rows[i].id === currentId) { exists = true; break; }
+              }
+              state.editor.currentId = exists ? currentId : (rows.length ? rows[0].id : null);
+              state.editor.outputFilename = filename;
+              setEditorDirty(false);
+              byId("editorFileSummary").textContent = filename + "／" + rows.length.toLocaleString("ja-JP") + "件";
+              byId("editorMessage").textContent = "";
+              renderEditorRecordList();
+              if (state.editor.currentId !== null) { openEditorRecord(state.editor.currentId); }
+              if (state.previewMode) { activateData(cloneRows(rows), true, filename); }
+              showToast("CSV保存を実行しました。");
+            }, function (error) {
+              if (error && error.name === "AbortError") {
+                byId("editorMessage").textContent = "CSV保存をキャンセルしました。変更内容は画面内に残っています。";
+              } else {
+                byId("editorMessage").textContent = "CSVを保存できませんでした。変更内容は画面内に残っています。";
+              }
+            });
+          }
+'''
+
+          text = text[:start] + new_block + '\n' + text[end:]
+
+          old_load = '''      state.editor.rows = cloneRows(rows);
+                state.editor.filename = file.name;
+                state.editor.outputFilename = file.name;
+                state.editor.fileHandle = handle;'''
+          new_load = '''      state.editor.rows = cloneRows(rows);
+                indexEditorOriginalRows(rows);
+                state.editor.changes = {};
+                state.editor.deletedPrevious = {};
+                state.editor.filename = file.name;
+                state.editor.outputFilename = file.name;
+                state.editor.fileHandle = handle;'''
+          if text.count(old_load) != 1:
+              raise SystemExit('load initialization block not found')
+          text = text.replace(old_load, new_load, 1)
+
+          old_preview = 'rows = STILocalDb.parse(STILocalDb.serialize(state.editor.rows), filename);'
+          new_preview = 'rows = STILocalDb.parse(STILocalDb.serialize(activeEditorRows()), filename);'
+          if text.count(old_preview) != 1:
+              raise SystemExit('preview serialization line not found')
+          text = text.replace(old_preview, new_preview, 1)
+
+          old_open_event = '''    byId("openLocalCsvButton").addEventListener("click", function () {
+              requestEditorAction(openLocalCsvPicker);
+            });'''
+          new_open_event = '''    byId("openLocalCsvButton").addEventListener("click", function () {
+              requestEditorAction(function () {
+                if (editorHasChanges() && !window.confirm("CSVへ保存していない変更があります。別のCSVを開くと変更は失われます。続けますか？")) { return; }
+                openLocalCsvPicker();
+              });
+            });'''
+          if text.count(old_open_event) != 1:
+              raise SystemExit('open CSV event block not found')
+          text = text.replace(old_open_event, new_open_event, 1)
+
+          old_add_event = '    byId("addRecordButton").addEventListener("click", function () { requestEditorAction(addEditorRecord); });'
+          new_add_event = old_add_event + '\n    byId("saveAllCsvButton").addEventListener("click", function () { requestEditorAction(saveAllEditorCsv); });'
+          if text.count(old_add_event) != 1:
+              raise SystemExit('add record event not found')
+          text = text.replace(old_add_event, new_add_event, 1)
+
+          old_before = '      if (!state.editor.dirty) { return; }'
+          new_before = '      if (!state.editor.dirty && !editorHasChanges()) { return; }'
+          # Replace only the final beforeunload guard, which is the last occurrence.
+          pos = text.rfind(old_before)
+          if pos < 0:
+              raise SystemExit('beforeunload guard not found')
+          text = text[:pos] + new_before + text[pos + len(old_before):]
+
+          checks = [
+              'function saveAllEditorCsv()',
+              'function activeEditorRows()',
+              'function updateEditorChangeSummary()',
+              '【削除予定】',
+              'byId("saveAllCsvButton")',
+              'state.editor.changes = {}',
+              'STILocalDb.serialize(activeEditorRows())',
+          ]
+          for marker in checks:
+              if marker not in text:
+                  raise SystemExit('missing marker: ' + marker)
+          if 'let ' in text or 'const ' in text or '=>' in text:
+              raise SystemExit('IE11-incompatible syntax introduced')
+
+          path.write_text(text, encoding='utf-8', newline='\n')
+
+      - name: Check app.js syntax
+        run: node --check js/app.js
+
+      - name: Commit app.js and remove workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/patch-app-memory-editor-once.yml
+          git add js/app.js
+          git commit -m "CSV編集をメモリ確定と一括保存方式に変更"
+          git push origin HEAD:main

@@ -46,3 +46,23 @@ body.print-browse #browsePrintDocument { display: block !important; }
 .browse-print-item h2 { margin: 0 0 1.5mm; font-size: 11pt; }
 .browse-print-meta { margin: 0 0 2mm; color: #444; font-size: 8.5pt; }
 .browse-print-law { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; font-size: 10.5pt; line-height: 1.8; }
+
+/* IE11 / Microsoft Edge IE mode print fallback. */
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+  .result-summary {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+  }
+  .result-score,
+  .summary-stat {
+    display: table-cell;
+    width: 25%;
+    vertical-align: middle;
+  }
+  .browse-print-law {
+    overflow-wrap: normal;
+    word-wrap: break-word;
+  }
+}

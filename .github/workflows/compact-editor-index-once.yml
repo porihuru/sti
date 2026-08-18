@@ -1,0 +1,166 @@
+name: Compact CSV editor index once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/compact-editor-index-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compact editor HTML
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('index.html')
+          text = path.read_text(encoding='utf-8')
+          start = '      <section class="view" id="editorView" aria-labelledby="editorTitle">'
+          end = '      <section class="view" id="learnView" aria-labelledby="learnTitle">'
+          if text.count(start) != 1 or text.count(end) != 1:
+              raise SystemExit('Editor section markers not found exactly once')
+
+          new_section = '''      <section class="view" id="editorView" aria-labelledby="editorTitle">
+        <section class="editor-compact-header" aria-label="CSV編集操作">
+          <div class="editor-compact-title">
+            <div>
+              <p class="eyebrow">端末内だけで処理</p>
+              <h1 id="editorTitle">R8db.csv編集</h1>
+            </div>
+            <span class="local-only-badge">ローカル限定</span>
+          </div>
+          <div class="editor-compact-file">
+            <button class="button secondary file-picker-button" id="openLocalCsvButton" type="button">CSVファイルを開く</button>
+            <div class="editor-file-summary" id="editorFileSummary">ファイルは選択されていません。</div>
+            <p class="editor-message" id="editorMessage" role="alert"></p>
+          </div>
+        </section>
+
+        <div id="editorWorkspace" hidden>
+          <div class="editor-toolbar editor-toolbar-compact">
+            <div class="editor-toolbar-file">
+              <span class="editor-toolbar-label">編集中</span>
+              <strong id="editorFilename">-</strong>
+            </div>
+            <div class="editor-change-summary" id="editorChangeSummary" aria-label="未保存の変更">
+              <span>未保存</span>
+              <strong class="change-added">追加 <span id="editorAddedCount">0</span></strong>
+              <strong class="change-edited">編集 <span id="editorEditedCount">0</span></strong>
+              <strong class="change-deleted">削除 <span id="editorDeletedCount">0</span></strong>
+            </div>
+            <div class="editor-toolbar-actions">
+              <button class="button secondary" id="addRecordButton" type="button">新規追加</button>
+              <button class="button secondary" id="previewLocalDbButton" type="button">このDBで動作確認</button>
+              <button class="button primary" id="saveAllCsvButton" type="button" disabled>CSVを保存</button>
+            </div>
+          </div>
+
+          <div class="editor-layout editor-layout-compact">
+            <aside class="editor-records editor-records-compact">
+              <div class="record-search-row">
+                <label class="field record-search-field">
+                  <span>レコード検索</span>
+                  <input id="editorSearch" type="search" placeholder="ID・分類・条文">
+                </label>
+                <p class="record-count" id="editorRecordCount"></p>
+              </div>
+              <div class="record-status-legend" aria-label="変更状態">
+                <span class="record-status-normal">通常</span>
+                <span class="record-status-added">追加</span>
+                <span class="record-status-edited">編集</span>
+                <span class="record-status-deleted">削除予定</span>
+              </div>
+              <div class="record-list" id="editorRecordList" role="listbox" aria-label="編集するレコード" hidden></div>
+              <select class="record-select" id="editorRecordSelect" size="16" aria-label="編集するレコード"></select>
+              <div class="record-navigation">
+                <button class="button quiet" id="previousRecordButton" type="button">前へ</button>
+                <button class="button quiet" id="nextRecordButton" type="button">次へ</button>
+              </div>
+            </aside>
+
+            <form class="record-editor record-editor-compact" id="recordEditorForm">
+              <div class="record-editor-heading record-editor-heading-compact">
+                <div>
+                  <p class="card-kicker">レコード編集</p>
+                  <h2 id="recordEditorTitle">レコード編集</h2>
+                </div>
+                <div class="record-editor-heading-side">
+                  <span class="unsaved-badge" id="unsavedBadge" hidden>未保存</span>
+                  <div class="record-editor-heading-actions">
+                    <button class="button danger" id="deleteRecordButtonTop" type="button" data-delete-record>削除</button>
+                    <button class="button primary" id="saveRecordButtonTop" type="button" data-save-record>この変更を確定</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="editor-fields compact-editor-fields compact-editor-fields-all">
+                <label class="field compact-field-id"><span>ID</span><input id="editId" type="number" min="1" inputmode="numeric" required></label>
+                <label class="field compact-field-short"><span>重要度</span><select id="editImportance" required><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
+                <label class="field compact-field-short"><span>難易度</span><select id="editDifficulty" required><option value="初級">初級</option><option value="中級">中級</option><option value="上級">上級</option></select></label>
+                <label class="field compact-field-category"><span>大分類</span><select id="editCategory1" required><option value="会計">会計</option><option value="給与">給与</option><option value="旅費">旅費</option><option value="契約">契約</option></select></label>
+                <label class="field compact-field-group"><span>関連法規</span><input id="editCategory2" type="text" required></label>
+                <label class="field compact-field-date"><span>保存日</span><input id="editNotes1" type="text" readonly></label>
+                <label class="field compact-field-nickname"><span>ニックネーム</span><input id="editNotes2" type="text" maxlength="40" required></label>
+                <label class="field compact-field-note"><span>notes3</span><input id="editNotes3" type="text"></label>
+                <label class="field compact-field-note"><span>notes4</span><input id="editNotes4" type="text"></label>
+                <label class="field compact-field-note"><span>notes5</span><input id="editNotes5" type="text"></label>
+              </div>
+
+              <div class="editor-fields long-editor-fields long-editor-fields-compact">
+                <label class="field"><span>正しい条文</span><textarea id="editOriginal" rows="1" required></textarea></label>
+                <label class="field"><span>問題用条文</span><textarea id="editQuestion" rows="1" required></textarea></label>
+                <label class="field"><span>変更箇所と説明</span><textarea id="editExplanation" rows="1" required></textarea></label>
+              </div>
+
+              <p class="editor-message" id="recordEditorMessage" role="alert"></p>
+              <div class="record-editor-actions record-editor-actions-compact">
+                <button class="button danger" id="deleteRecordButton" type="button" data-delete-record>削除</button>
+                <button class="button primary" id="saveRecordButton" type="submit">この変更を確定</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+'''
+
+          before, rest = text.split(start, 1)
+          old_editor, after = rest.split(end, 1)
+          text = before + new_section + end + after
+
+          required_ids = [
+              'openLocalCsvButton', 'editorFileSummary', 'editorMessage', 'editorWorkspace',
+              'editorFilename', 'addRecordButton', 'previewLocalDbButton', 'editorSearch',
+              'editorRecordCount', 'editorRecordSelect', 'previousRecordButton', 'nextRecordButton',
+              'recordEditorForm', 'recordEditorTitle', 'unsavedBadge', 'deleteRecordButtonTop',
+              'saveRecordButtonTop', 'editId', 'editImportance', 'editDifficulty', 'editCategory1',
+              'editCategory2', 'editOriginal', 'editQuestion', 'editExplanation', 'editNotes1',
+              'editNotes2', 'editNotes3', 'editNotes4', 'editNotes5', 'recordEditorMessage',
+              'deleteRecordButton', 'saveRecordButton'
+          ]
+          for item_id in required_ids:
+              marker = 'id="' + item_id + '"'
+              if text.count(marker) != 1:
+                  raise SystemExit(f'{item_id}: expected exactly one ID, got {text.count(marker)}')
+
+          for new_id in ['editorRecordList', 'editorChangeSummary', 'editorAddedCount', 'editorEditedCount', 'editorDeletedCount', 'saveAllCsvButton']:
+              if text.count('id="' + new_id + '"') != 1:
+                  raise SystemExit(f'Missing new editor ID: {new_id}')
+
+          path.write_text(text, encoding='utf-8', newline='\n')
+      - name: Commit compact editor HTML and remove one-time workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/compact-editor-index-once.yml
+          git add index.html
+          git commit -m "CSV編集画面をコンパクトな構成に整理"
+          git push origin HEAD:main

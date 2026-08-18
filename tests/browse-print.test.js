@@ -20,5 +20,9 @@ assert.ok(printCss.indexOf(".browse-print-law") >= 0, "条文一覧の読みや�
 assert.ok(printCss.indexOf("font-size: 14pt") >= 0, "PDF見出しのフォントが小さく調整されていません");
 assert.ok(printCss.indexOf("border-top: 2.5pt double") >= 0, "PDF見出し上部の装飾線がありません");
 assert.ok(printCss.indexOf(".browse-print-header h1:after") >= 0, "PDF見出しのアクセントラインがありません");
+assert.ok(printCss.indexOf("IE11 / Microsoft Edge IE mode print fallback") >= 0, "IE11印刷フォールバックがありません");
+assert.ok(printCss.indexOf("display: table;") >= 0, "IE11用の成績欄tableフォールバックがありません");
+assert.ok(printCss.indexOf("display: table-cell;") >= 0, "IE11用の成績セルフォールバックがありません");
+assert.ok(printCss.indexOf("word-wrap: break-word;") >= 0, "IE11用の長文改行フォールバックがありません");
 
 console.log("Browse PDF print validation passed");

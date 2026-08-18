@@ -1,9 +1,8 @@
 name: Fix CSV save state once
 
 on:
-  push:
-    paths:
-      - '.github/fix-csv-save-state.trigger'
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
@@ -13,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
       - name: Patch app.js and clean temporary files
         shell: bash
         run: |
@@ -43,13 +44,15 @@ jobs:
       }).catch(function () {
 '''
           count = s.count(old)
-          if count != 1:
-              raise SystemExit('target count was %d, expected 1' % count)
-          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          if count == 1:
+              p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          elif 'var savedCurrentId = batch.currentId;' not in s:
+              raise SystemExit('CSV save target was not found')
           PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add js/app.js
-          git rm .github/workflows/fix-csv-save-state-once.yml .github/fix-csv-save-state.trigger
+          git rm -f .github/workflows/fix-csv-save-state-once.yml .github/fix-csv-save-state.trigger || true
+          if git diff --cached --quiet; then exit 0; fi
           git commit -m "CSV保存後の編集状態をリセット"
-          git push
+          git push origin HEAD:${{ github.head_ref }}

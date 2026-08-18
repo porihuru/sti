@@ -230,44 +230,56 @@
       </section>
 
       <section class="view" id="editorView" aria-labelledby="editorTitle">
-        <div class="page-heading editor-heading">
-          <div>
-            <p class="eyebrow">端末内だけで処理</p>
-            <h1 id="editorTitle">R8db.csv編集</h1>
-            <p>ローカルCSVはサーバーへ送信されません。形式が一致するファイルだけを読み込みます。</p>
+        <section class="editor-compact-header" aria-label="CSV編集操作">
+          <div class="editor-compact-title">
+            <div>
+              <p class="eyebrow">端末内だけで処理</p>
+              <h1 id="editorTitle">R8db.csv編集</h1>
+            </div>
+            <span class="local-only-badge">ローカル限定</span>
           </div>
-          <span class="local-only-badge">ローカル限定</span>
-        </div>
-
-        <section class="editor-file-card">
-          <div>
-            <h2>編集するCSVを選択</h2>
-            <p>必要な13列を持つUTF-8のCSVを選択してください。</p>
+          <div class="editor-compact-file">
+            <button class="button secondary file-picker-button" id="openLocalCsvButton" type="button">CSVファイルを開く</button>
+            <div class="editor-file-summary" id="editorFileSummary">ファイルは選択されていません。</div>
+            <p class="editor-message" id="editorMessage" role="alert"></p>
           </div>
-          <button class="button secondary file-picker-button" id="openLocalCsvButton" type="button">CSVファイルを開く</button>
-          <div class="editor-file-summary" id="editorFileSummary">ファイルは選択されていません。</div>
-          <p class="editor-message" id="editorMessage" role="alert"></p>
         </section>
 
         <div id="editorWorkspace" hidden>
-          <div class="editor-toolbar">
-            <div>
-              <span class="editor-toolbar-label">編集中のファイル</span>
+          <div class="editor-toolbar editor-toolbar-compact">
+            <div class="editor-toolbar-file">
+              <span class="editor-toolbar-label">編集中</span>
               <strong id="editorFilename">-</strong>
             </div>
+            <div class="editor-change-summary" id="editorChangeSummary" aria-label="未保存の変更">
+              <span>未保存</span>
+              <strong class="change-added">追加 <span id="editorAddedCount">0</span></strong>
+              <strong class="change-edited">編集 <span id="editorEditedCount">0</span></strong>
+              <strong class="change-deleted">削除 <span id="editorDeletedCount">0</span></strong>
+            </div>
             <div class="editor-toolbar-actions">
-              <button class="button secondary" id="addRecordButton" type="button">新しいレコードを追加</button>
-              <button class="button primary" id="previewLocalDbButton" type="button">このDBで動作確認</button>
+              <button class="button secondary" id="addRecordButton" type="button">新規追加</button>
+              <button class="button secondary" id="previewLocalDbButton" type="button">このDBで動作確認</button>
+              <button class="button primary" id="saveAllCsvButton" type="button" disabled>CSVを保存</button>
             </div>
           </div>
 
-          <div class="editor-layout">
-            <aside class="editor-records">
-              <label class="field">
-                <span>レコードを検索</span>
-                <input id="editorSearch" type="search" placeholder="ID・分類・条文">
-              </label>
-              <p class="record-count" id="editorRecordCount"></p>
+          <div class="editor-layout editor-layout-compact">
+            <aside class="editor-records editor-records-compact">
+              <div class="record-search-row">
+                <label class="field record-search-field">
+                  <span>レコード検索</span>
+                  <input id="editorSearch" type="search" placeholder="ID・分類・条文">
+                </label>
+                <p class="record-count" id="editorRecordCount"></p>
+              </div>
+              <div class="record-status-legend" aria-label="変更状態">
+                <span class="record-status-normal">通常</span>
+                <span class="record-status-added">追加</span>
+                <span class="record-status-edited">編集</span>
+                <span class="record-status-deleted">削除予定</span>
+              </div>
+              <div class="record-list" id="editorRecordList" role="listbox" aria-label="編集するレコード" hidden></div>
               <select class="record-select" id="editorRecordSelect" size="16" aria-label="編集するレコード"></select>
               <div class="record-navigation">
                 <button class="button quiet" id="previousRecordButton" type="button">前へ</button>
@@ -275,47 +287,44 @@
               </div>
             </aside>
 
-            <form class="record-editor" id="recordEditorForm">
-              <div class="record-editor-heading">
+            <form class="record-editor record-editor-compact" id="recordEditorForm">
+              <div class="record-editor-heading record-editor-heading-compact">
                 <div>
-                  <p class="card-kicker">1レコードずつ保存</p>
+                  <p class="card-kicker">レコード編集</p>
                   <h2 id="recordEditorTitle">レコード編集</h2>
                 </div>
                 <div class="record-editor-heading-side">
                   <span class="unsaved-badge" id="unsavedBadge" hidden>未保存</span>
                   <div class="record-editor-heading-actions">
-                    <button class="button danger" id="deleteRecordButtonTop" type="button" data-delete-record>このレコードを削除</button>
-                    <button class="button primary" id="saveRecordButtonTop" type="button" data-save-record>このレコードを保存</button>
+                    <button class="button danger" id="deleteRecordButtonTop" type="button" data-delete-record>削除</button>
+                    <button class="button primary" id="saveRecordButtonTop" type="button" data-save-record>この変更を確定</button>
                   </div>
                 </div>
               </div>
 
-              <div class="editor-fields compact-editor-fields">
-                <label class="field"><span>id</span><input id="editId" type="number" min="1" inputmode="numeric" required></label>
-                <label class="field"><span>Importance</span><select id="editImportance" required><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
-                <label class="field"><span>difficult</span><select id="editDifficulty" required><option value="初級">初級</option><option value="中級">中級</option><option value="上級">上級</option></select></label>
-                <label class="field"><span>category1（大分類）</span><select id="editCategory1" required><option value="会計">会計</option><option value="給与">給与</option><option value="旅費">旅費</option><option value="契約">契約</option></select></label>
-                <label class="field"><span>category2（関連法規グループ）</span><input id="editCategory2" type="text" required></label>
+              <div class="editor-fields compact-editor-fields compact-editor-fields-all">
+                <label class="field compact-field-id"><span>ID</span><input id="editId" type="number" min="1" inputmode="numeric" required></label>
+                <label class="field compact-field-short"><span>重要度</span><select id="editImportance" required><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
+                <label class="field compact-field-short"><span>難易度</span><select id="editDifficulty" required><option value="初級">初級</option><option value="中級">中級</option><option value="上級">上級</option></select></label>
+                <label class="field compact-field-category"><span>大分類</span><select id="editCategory1" required><option value="会計">会計</option><option value="給与">給与</option><option value="旅費">旅費</option><option value="契約">契約</option></select></label>
+                <label class="field compact-field-group"><span>関連法規</span><input id="editCategory2" type="text" required></label>
+                <label class="field compact-field-date"><span>保存日</span><input id="editNotes1" type="text" readonly></label>
+                <label class="field compact-field-nickname"><span>ニックネーム</span><input id="editNotes2" type="text" maxlength="40" required></label>
+                <label class="field compact-field-note"><span>notes3</span><input id="editNotes3" type="text"></label>
+                <label class="field compact-field-note"><span>notes4</span><input id="editNotes4" type="text"></label>
+                <label class="field compact-field-note"><span>notes5</span><input id="editNotes5" type="text"></label>
               </div>
 
-              <div class="editor-fields long-editor-fields">
-                <label class="field"><span>original（正しい条文）</span><textarea id="editOriginal" rows="1" required></textarea></label>
-                <label class="field"><span>question（問題用条文）</span><textarea id="editQuestion" rows="1" required></textarea></label>
-                <label class="field"><span>explanation（変更箇所と説明）</span><textarea id="editExplanation" rows="1" required></textarea></label>
-              </div>
-
-              <div class="editor-fields notes-editor-fields">
-                <label class="field"><span>notes1（保存日・自動入力）</span><input id="editNotes1" type="text" readonly></label>
-                <label class="field"><span>notes2（ニックネーム・必須）</span><input id="editNotes2" type="text" maxlength="40" required></label>
-                <label class="field"><span>notes3</span><input id="editNotes3" type="text"></label>
-                <label class="field"><span>notes4</span><input id="editNotes4" type="text"></label>
-                <label class="field"><span>notes5</span><input id="editNotes5" type="text"></label>
+              <div class="editor-fields long-editor-fields long-editor-fields-compact">
+                <label class="field"><span>正しい条文</span><textarea id="editOriginal" rows="1" required></textarea></label>
+                <label class="field"><span>問題用条文</span><textarea id="editQuestion" rows="1" required></textarea></label>
+                <label class="field"><span>変更箇所と説明</span><textarea id="editExplanation" rows="1" required></textarea></label>
               </div>
 
               <p class="editor-message" id="recordEditorMessage" role="alert"></p>
-              <div class="record-editor-actions">
-                <button class="button danger" id="deleteRecordButton" type="button" data-delete-record>このレコードを削除</button>
-                <button class="button primary" id="saveRecordButton" type="submit">このレコードを保存</button>
+              <div class="record-editor-actions record-editor-actions-compact">
+                <button class="button danger" id="deleteRecordButton" type="button" data-delete-record>削除</button>
+                <button class="button primary" id="saveRecordButton" type="submit">この変更を確定</button>
               </div>
             </form>
           </div>

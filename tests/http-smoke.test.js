@@ -41,12 +41,21 @@ function request(port, url) {
 server = http.createServer(serve);
 server.listen(0, "127.0.0.1", function () {
   var port = server.address().port;
-  Promise.all([request(port, "/index.html"), request(port, "/db/R8db.csv")])
+  Promise.all([
+    request(port, "/index.html"),
+    request(port, "/db/R8db.csv"),
+    request(port, "/css/ie11.css"),
+    request(port, "/js/ie11.js")
+  ])
     .then(function (responses) {
       assert.strictEqual(responses[0].status, 200);
       assert.ok(responses[0].body.toString("utf8").indexOf("NAF-CSM") >= 0);
       assert.strictEqual(responses[1].status, 200);
       assert.ok(responses[1].body.length > 3000000);
+      assert.strictEqual(responses[2].status, 200);
+      assert.ok(responses[2].body.toString("utf8").indexOf("IE11") >= 0);
+      assert.strictEqual(responses[3].status, 200);
+      assert.ok(responses[3].body.toString("utf8").indexOf("document.documentMode") >= 0);
       console.log("HTTP smoke test passed");
       server.close();
     })

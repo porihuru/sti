@@ -899,3 +899,141 @@
     border-left: 0;
   }
 }
+
+/* Comfortable spacing for IE mode. */
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+  main {
+    width: calc(100% - 64px);
+    max-width: 1120px;
+  }
+
+  .view {
+    padding-top: 28px;
+    padding-bottom: 42px;
+  }
+  #homeView {
+    padding-top: 14px;
+    padding-bottom: 26px;
+  }
+
+  .hero-panel {
+    padding: 18px 26px 22px;
+  }
+  .today-card {
+    padding: 14px 18px;
+  }
+
+  .section-heading {
+    margin-top: 18px;
+    margin-bottom: 12px;
+  }
+  .page-heading,
+  .analysis-heading {
+    margin-bottom: 20px;
+  }
+
+  .mode-grid { margin-right: -18px; }
+  .mode-card {
+    width: calc(25% - 18px);
+    margin-right: 18px;
+    margin-bottom: 18px;
+    padding: 15px 16px;
+  }
+
+  .settings-card,
+  .start-card,
+  .question-card,
+  .feedback-panel,
+  .analysis-card,
+  .result-summary,
+  .report-conditions,
+  .result-details {
+    padding: 18px 22px;
+  }
+  .form-section {
+    padding-top: 18px;
+    padding-bottom: 22px;
+  }
+  .mode-option {
+    margin-bottom: 14px;
+  }
+  .form-grid > .field {
+    margin-bottom: 18px;
+  }
+
+  .analysis-grid > .analysis-card {
+    margin-bottom: 18px;
+  }
+  .analysis-card {
+    padding: 20px 22px;
+  }
+
+  #editorView {
+    padding-top: 20px;
+    padding-bottom: 36px;
+  }
+  .editor-compact-header {
+    padding: 14px 18px;
+    margin-bottom: 14px;
+  }
+  .editor-toolbar-compact {
+    padding: 12px 14px;
+    margin-bottom: 14px;
+  }
+  .editor-records-compact {
+    padding: 14px;
+    margin-right: 16px;
+  }
+  .record-editor-compact {
+    padding: 16px 18px;
+  }
+  .record-editor-heading-compact {
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+  }
+  .record-search-row {
+    margin-bottom: 9px;
+  }
+  .record-status-legend {
+    margin-bottom: 10px;
+  }
+  .record-navigation {
+    margin-top: 10px;
+  }
+  .compact-editor-fields-all > .field {
+    margin-right: 10px;
+    margin-bottom: 10px;
+  }
+  .long-editor-fields-compact > .field {
+    margin-bottom: 11px;
+  }
+  .long-editor-fields-compact textarea {
+    min-height: 86px;
+    padding: 9px 10px;
+  }
+  .record-editor-actions-compact {
+    margin-top: 10px;
+    padding-top: 10px;
+  }
+}
+
+@media all and (-ms-high-contrast: none) and (max-width: 960px),
+       (-ms-high-contrast: active) and (max-width: 960px) {
+  main { width: calc(100% - 44px); }
+  .mode-card { width: calc(50% - 18px); }
+  .editor-records-compact { margin-right: 0; }
+}
+
+@media all and (-ms-high-contrast: none) and (max-width: 720px),
+       (-ms-high-contrast: active) and (max-width: 720px) {
+  main { width: calc(100% - 30px); }
+  .view {
+    padding-top: 24px;
+    padding-bottom: 36px;
+  }
+  .mode-grid { margin-right: 0; }
+  .mode-card {
+    width: 100%;
+    margin-right: 0;
+  }
+}

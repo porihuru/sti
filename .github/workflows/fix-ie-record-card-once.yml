@@ -1,0 +1,36 @@
+name: Fix IE record card once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/fix-ie-record-card.trigger'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch IE record card
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('css/ie11.css')
+          s = p.read_text(encoding='utf-8')
+          marker = '/* Stable home record card layout for IE mode. */'
+          if marker not in s:
+              s += '''\n\n/* Stable home record card layout for IE mode. */\n@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {\n  .record-layout {\n    display: table;\n    width: 100%;\n    table-layout: fixed;\n  }\n  .record-layout .score-summary {\n    display: table-cell;\n    width: 52%;\n    vertical-align: middle;\n  }\n  .record-layout .mini-stats {\n    display: table-cell;\n    width: 48%;\n    margin: 0;\n    vertical-align: middle;\n    border-left: 1px solid #ddd4ba;\n  }\n  .record-layout .score-ring {\n    display: block;\n    margin: 0 auto 4px;\n    padding-top: 22px;\n    text-align: center;\n    line-height: 1;\n  }\n  .record-layout .score-ring span,\n  .record-layout .score-ring small {\n    display: inline;\n    vertical-align: baseline;\n  }\n}\n\n@media all and (-ms-high-contrast: none) and (max-width: 720px),\n       (-ms-high-contrast: active) and (max-width: 720px) {\n  .record-layout { display: block; }\n  .record-layout .score-summary,\n  .record-layout .mini-stats {\n    display: block;\n    width: auto;\n  }\n  .record-layout .mini-stats {\n    margin-top: 20px;\n    border-left: 0;\n  }\n}\n'''
+          p.write_text(s, encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/fix-ie-record-card-once.yml .github/fix-ie-record-card.trigger
+          git add css/ie11.css
+          git commit -m "IEモードの記録カード表示崩れを修正"
+          git push origin HEAD:main

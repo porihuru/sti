@@ -1,16 +1,15 @@
 name: Result detail tune once
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/result-detail.trigger'
+  issues:
+    types: [opened]
 
 permissions:
   contents: write
 
 jobs:
   patch:
+    if: github.event.issue.title == 'RUN_RESULT_DETAIL_ONCE'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -272,7 +271,6 @@ jobs:
               raise SystemExit('helper marker not found')
           s = s.replace(marker, helper + marker, 1)
 
-          # remove variables no longer used in renderResults
           s = s.replace('''    var wrongAnswers = [];
 ''', '', 1)
           s = s.replace('''    var stat;

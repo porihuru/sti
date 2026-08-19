@@ -8,7 +8,6 @@
     "notes3", "notes4", "notes5"
   ];
   var DIFFICULTIES = { "初級": true, "中級": true, "上級": true };
-  var CATEGORIES = { "会計": true, "給与": true, "旅費": true, "契約": true };
 
   if (typeof module !== "undefined" && module.exports) {
     csv = require("./csv.js");
@@ -47,7 +46,6 @@
   function validateRows(rawRows, rows) {
     var ids = {};
     var rawIndex;
-    var row;
     var id;
     var importance;
     var requiredIndexes = [0, 1, 2, 3, 4, 5, 6, 7];
@@ -76,9 +74,6 @@
       }
       if (!DIFFICULTIES[trim(rawRows[rawIndex][2])]) {
         throw new Error("CSVの" + (rawIndex + 1) + "行目のdifficultが初級・中級・上級ではありません。ファイルは読み込まれませんでした。");
-      }
-      if (!CATEGORIES[trim(rawRows[rawIndex][3])]) {
-        throw new Error("CSVの" + (rawIndex + 1) + "行目のcategory1が会計・給与・旅費・契約ではありません。ファイルは読み込まれませんでした。");
       }
       if (rawRows[rawIndex][5] === rawRows[rawIndex][6]) {
         throw new Error("CSVの" + (rawIndex + 1) + "行目はoriginalとquestionが同じです。ファイルは読み込まれませんでした。");

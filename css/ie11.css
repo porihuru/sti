@@ -851,3 +851,51 @@
   .compact-field-nickname,
   .compact-field-note { -ms-flex: 1 1 150px; flex: 1 1 150px; }
 }
+
+
+/* Stable home record card layout for IE mode. */
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+  .record-layout {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+  }
+  .record-layout .score-summary {
+    display: table-cell;
+    width: 52%;
+    vertical-align: middle;
+  }
+  .record-layout .mini-stats {
+    display: table-cell;
+    width: 48%;
+    margin: 0;
+    vertical-align: middle;
+    border-left: 1px solid #ddd4ba;
+  }
+  .record-layout .score-ring {
+    display: block;
+    margin: 0 auto 4px;
+    padding-top: 22px;
+    text-align: center;
+    line-height: 1;
+  }
+  .record-layout .score-ring span,
+  .record-layout .score-ring small {
+    display: inline;
+    vertical-align: baseline;
+  }
+}
+
+@media all and (-ms-high-contrast: none) and (max-width: 720px),
+       (-ms-high-contrast: active) and (max-width: 720px) {
+  .record-layout { display: block; }
+  .record-layout .score-summary,
+  .record-layout .mini-stats {
+    display: block;
+    width: auto;
+  }
+  .record-layout .mini-stats {
+    margin-top: 20px;
+    border-left: 0;
+  }
+}

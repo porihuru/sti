@@ -199,6 +199,23 @@
     root.showOpenFilePicker = wrappedPicker;
   }
 
+  function applyIeSetupLayoutFix() {
+    var document = root.document;
+    var setupView;
+    var heading;
+    if (!document || !document.documentMode) { return; }
+    setupView = document.getElementById("setupView");
+    if (!setupView) { return; }
+    heading = setupView.querySelector(".page-heading");
+    setupView.style.paddingTop = "10px";
+    if (!heading) { return; }
+    heading.style.display = "block";
+    heading.style.width = "100%";
+    heading.style.marginTop = "0";
+    heading.style.marginBottom = "12px";
+    heading.style.textAlign = "center";
+  }
+
   root.STILocalDb = {
     headers: HEADERS.slice(0),
     parse: parse,
@@ -208,7 +225,10 @@
   };
 
   if (root.document && root.addEventListener) {
-    root.addEventListener("DOMContentLoaded", setupEditorCategorySuggestions);
+    root.addEventListener("DOMContentLoaded", function () {
+      setupEditorCategorySuggestions();
+      applyIeSetupLayoutFix();
+    });
   }
 
   if (typeof module !== "undefined" && module.exports) {

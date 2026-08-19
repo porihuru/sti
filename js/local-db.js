@@ -132,6 +132,73 @@
     return value;
   }
 
+  function setupEditorCategorySuggestions() {
+    var document = root.document;
+    var input;
+    var list;
+    var originalPicker;
+
+    if (!document || !root.addEventListener) { return; }
+    input = document.getElementById("editCategory1");
+    if (!input) { return; }
+
+    list = document.getElementById("editCategory1Options");
+    if (!list) {
+      list = document.createElement("datalist");
+      list.id = "editCategory1Options";
+      input.parentNode.appendChild(list);
+    }
+    input.setAttribute("list", list.id);
+
+    function populate(rows) {
+      var seen = {};
+      var names = [];
+      var i;
+      var name;
+      var option;
+      while (list.firstChild) { list.removeChild(list.firstChild); }
+      for (i = 0; i < rows.length; i += 1) {
+        name = trim(rows[i].category1 || rows[i].category);
+        if (name && !seen[name]) {
+          seen[name] = true;
+          names.push(name);
+        }
+      }
+      names.sort(function (a, b) { return a.localeCompare(b, "ja"); });
+      for (i = 0; i < names.length; i += 1) {
+        option = document.createElement("option");
+        option.value = names[i];
+        list.appendChild(option);
+      }
+    }
+
+    root.STILocalDb.populateCategorySuggestions = populate;
+    originalPicker = root.showOpenFilePicker;
+    if (!originalPicker || originalPicker.__stiCategoryWrapped) { return; }
+
+    function wrappedPicker(options) {
+      return originalPicker.call(root, options).then(function (handles) {
+        var handle = handles && handles[0];
+        if (!handle || !handle.getFile || !root.FileReader || !root.Promise) { return handles; }
+        return handle.getFile().then(function (file) {
+          return new root.Promise(function (resolve) {
+            var reader = new root.FileReader();
+            reader.onload = function () {
+              try { populate(parse(reader.result, file.name)); }
+              catch (error) { /* Main editor shows validation errors. */ }
+              resolve(handles);
+            };
+            reader.onerror = function () { resolve(handles); };
+            reader.readAsText(file, "UTF-8");
+          });
+        }, function () { return handles; });
+      });
+    }
+
+    wrappedPicker.__stiCategoryWrapped = true;
+    root.showOpenFilePicker = wrappedPicker;
+  }
+
   root.STILocalDb = {
     headers: HEADERS.slice(0),
     parse: parse,
@@ -139,6 +206,10 @@
     dateStamp: dateStamp,
     validateNickname: validateNickname
   };
+
+  if (root.document && root.addEventListener) {
+    root.addEventListener("DOMContentLoaded", setupEditorCategorySuggestions);
+  }
 
   if (typeof module !== "undefined" && module.exports) {
     module.exports = root.STILocalDb;

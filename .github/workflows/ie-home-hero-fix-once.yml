@@ -1,15 +1,16 @@
 name: IE home hero fix once
 
 on:
-  pull_request:
-    types: [opened, reopened]
+  push:
+    branches: [main]
+    paths:
+      - '.github/ie-home-run'
 
 permissions:
   contents: write
 
 jobs:
   patch:
-    if: github.event.pull_request.title == 'RUN_IE_HOME_HERO_FIX_ONCE'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -84,9 +85,9 @@ jobs:
               p.write_text(s, encoding='utf-8')
       - name: Clean and commit
         run: |
-          rm -f .github/workflows/ie-home-hero-fix-once.yml
+          rm -f .github/ie-home-run .github/workflows/ie-home-hero-fix-once.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add css/ie11.css .github/workflows/ie-home-hero-fix-once.yml
+          git add css/ie11.css .github/ie-home-run .github/workflows/ie-home-hero-fix-once.yml
           git commit -m "IEモードのホーム上部レイアウト崩れを修正"
           git push origin main

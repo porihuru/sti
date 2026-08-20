@@ -159,6 +159,24 @@
     style.id = "inlineAnswerFeedbackStyle";
     style.type = "text/css";
     style.appendChild(document.createTextNode(
+      "#setupView{width:94vw!important;margin-left:calc(50% - 47vw)!important;padding-top:6px!important;padding-bottom:10px!important;}" +
+      "#setupView .page-heading{display:block!important;margin:0 auto 6px!important;text-align:center!important;}" +
+      "#setupView .page-heading .eyebrow{margin-bottom:2px!important;}" +
+      "#setupView .page-heading h1{margin:0!important;font-size:30px!important;line-height:1.2!important;}" +
+      "#setupView .page-heading>p{margin-top:2px!important;line-height:1.35!important;}" +
+      "#setupView .setup-layout{display:-ms-flexbox!important;display:flex!important;-ms-flex-direction:column!important;flex-direction:column!important;width:100%!important;margin:0 auto!important;}" +
+      "#setupView .settings-card{display:block!important;width:100%!important;max-width:none!important;margin:0!important;padding:4px 18px!important;box-sizing:border-box!important;}" +
+      "#setupView .form-section{padding-top:8px!important;padding-bottom:9px!important;}" +
+      "#setupView .form-section h2{margin-bottom:6px!important;font-size:16px!important;line-height:1.25!important;}" +
+      "#setupView .form-section h2>span{width:22px!important;height:22px!important;font-size:12px!important;}" +
+      "#setupView .mode-options{margin-right:-8px!important;}" +
+      "#setupView .mode-option{width:calc(25% - 8px)!important;margin-right:8px!important;margin-bottom:6px!important;}" +
+      "#setupView .form-grid>.field{margin-bottom:8px!important;}" +
+      "#setupView .field>span{margin-bottom:2px!important;line-height:1.25!important;}" +
+      "#setupView .field select,#setupView .field input{min-height:34px!important;padding-top:4px!important;padding-bottom:4px!important;}" +
+      "#setupView .count-presets{margin-top:3px!important;}" +
+      "#setupView .count-presets button{min-height:28px!important;padding-top:3px!important;padding-bottom:3px!important;}" +
+      "#setupView .form-message,#setupView .start-note{margin-top:3px!important;margin-bottom:0!important;line-height:1.3!important;}" +
       "#learnView>.session-header,#learnView>.question-card,#learnView>.feedback-panel{" +
       "position:relative!important;left:50%!important;width:80vw!important;max-width:80vw!important;" +
       "margin-left:-40vw!important;margin-right:0!important;transform:none!important;box-sizing:border-box!important;}" +

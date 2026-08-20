@@ -47,9 +47,10 @@
     return null;
   }
 
-  function isFourCorrectMode() {
+  function isFourChoiceFeedbackMode() {
     var label = byId("sessionModeLabel");
-    return label && trim(label.textContent) === "4択・正しい条文";
+    var value = label ? trim(label.textContent) : "";
+    return value === "4択・正しい条文" || value === "4択・誤った条文";
   }
 
   function create(tag, className, text) {
@@ -59,23 +60,26 @@
     return node;
   }
 
-  function explanationForButton(button) {
+  function explanationInfoForButton(button) {
     var textNode = button.querySelector(".choice-text");
     var text = textNode ? trim(textNode.textContent) : "";
     var row = rowsByQuestion[text];
-    return row && row.explanation ? row.explanation : "この選択肢は正しい条文から変更された誤った条文です。";
+    if (row && row.explanation) {
+      return { wrong: true, text: row.explanation };
+    }
+    return { wrong: false, text: "この選択肢は正しい条文です。" };
   }
 
-  function appendExplanation(choiceItem, button, correct) {
+  function appendExplanation(choiceItem, button) {
     var box;
     var title;
-    var text;
+    var info;
     if (!choiceItem || choiceItem.querySelector(".inline-choice-explanation")) { return; }
-    box = create("div", "inline-choice-explanation " + (correct ? "correct" : "wrong"));
-    title = create("strong", "inline-choice-explanation-title", correct ? "解説" : "解説（誤り）");
-    text = correct ? "この選択肢は正しい条文です。" : explanationForButton(button);
+    info = explanationInfoForButton(button);
+    box = create("div", "inline-choice-explanation " + (info.wrong ? "wrong" : "correct"));
+    title = create("strong", "inline-choice-explanation-title", info.wrong ? "解説（誤り）" : "解説");
     box.appendChild(title);
-    box.appendChild(create("p", "", text));
+    box.appendChild(create("p", "", info.text));
     choiceItem.appendChild(box);
   }
 
@@ -101,7 +105,7 @@
     var next;
     var nextLabel;
 
-    if (!area || !isFourCorrectMode()) { return; }
+    if (!area || !isFourChoiceFeedbackMode()) { return; }
     list = area.querySelector(".choice-list");
     if (!list) { return; }
     items = list.querySelectorAll(".choice-item");
@@ -125,7 +129,7 @@
       } else if (i === selectedIndex) {
         appendStatus(items[i], "× 不正解・あなたの回答", false);
       }
-      appendExplanation(items[i], buttons[i], i === correctIndex);
+      appendExplanation(items[i], buttons[i]);
     }
 
     summary = create("div", "inline-answer-summary " + (selectedCorrect ? "correct" : "wrong"));
@@ -185,7 +189,7 @@
     var panel;
     var originalScroll;
     var index;
-    if (!button || !isFourCorrectMode() || button.disabled || suppressing) { return; }
+    if (!button || !isFourChoiceFeedbackMode() || button.disabled || suppressing) { return; }
     index = parseInt(button.getAttribute("data-choice-index"), 10);
     if (isNaN(index)) { return; }
 

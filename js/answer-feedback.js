@@ -52,13 +52,6 @@
     return label && trim(label.textContent) === "4択・正しい条文";
   }
 
-  function addClass(node, name) {
-    if (!node) { return; }
-    if ((" " + node.className + " ").indexOf(" " + name + " ") < 0) {
-      node.className += (node.className ? " " : "") + name;
-    }
-  }
-
   function create(tag, className, text) {
     var node = document.createElement(tag);
     if (className) { node.className = className; }
@@ -73,14 +66,16 @@
     return row && row.explanation ? row.explanation : "この選択肢は正しい条文から変更された誤った条文です。";
   }
 
-  function appendExplanation(choiceItem, button) {
+  function appendExplanation(choiceItem, button, correct) {
     var box;
     var title;
+    var text;
     if (!choiceItem || choiceItem.querySelector(".inline-choice-explanation")) { return; }
-    box = create("div", "inline-choice-explanation");
-    title = create("strong", "inline-choice-explanation-title", "解説（誤り）");
+    box = create("div", "inline-choice-explanation " + (correct ? "correct" : "wrong"));
+    title = create("strong", "inline-choice-explanation-title", correct ? "解説" : "解説（誤り）");
+    text = correct ? "この選択肢は正しい条文です。" : explanationForButton(button);
     box.appendChild(title);
-    box.appendChild(create("p", "", explanationForButton(button)));
+    box.appendChild(create("p", "", text));
     choiceItem.appendChild(box);
   }
 
@@ -123,19 +118,14 @@
     selectedCorrect = selectedIndex === correctIndex;
 
     if (panel) { panel.hidden = true; }
+
     for (i = 0; i < buttons.length; i += 1) {
       if (i === correctIndex) {
         appendStatus(items[i], "○ 正解", true);
+      } else if (i === selectedIndex) {
+        appendStatus(items[i], "× 不正解・あなたの回答", false);
       }
-    }
-
-    if (selectedCorrect) {
-      for (i = 0; i < buttons.length; i += 1) {
-        if (i !== correctIndex) { appendExplanation(items[i], buttons[i]); }
-      }
-    } else {
-      appendStatus(items[selectedIndex], "× 不正解・あなたの回答", false);
-      appendExplanation(items[selectedIndex], buttons[selectedIndex]);
+      appendExplanation(items[i], buttons[i], i === correctIndex);
     }
 
     summary = create("div", "inline-answer-summary " + (selectedCorrect ? "correct" : "wrong"));
@@ -171,10 +161,14 @@
       "#learnView #questionArea,#learnView .choice-list,#learnView .choice-item,#learnView .choice-button{" +
       "width:100%!important;max-width:none!important;box-sizing:border-box!important;}" +
       "#learnView .choice-text{display:block!important;width:100%!important;max-width:none!important;text-align:left!important;}" +
-      ".inline-choice-explanation{margin:8px 0 4px;padding:10px 13px;background:#fdf1ef;border:1px solid #e6bbb3;border-radius:8px;color:#5b302a;}" +
-      ".inline-choice-explanation-title{display:block;margin-bottom:4px;color:#a33c31;font-size:13px;}" +
+      ".inline-choice-explanation{margin:8px 0 10px;padding:10px 13px;border-radius:8px;}" +
+      ".inline-choice-explanation.wrong{background:#fdf1ef;border:1px solid #e6bbb3;color:#5b302a;}" +
+      ".inline-choice-explanation.correct{background:#edf8f0;border:1px solid #9dcaaa;color:#245c35;}" +
+      ".inline-choice-explanation-title{display:block;margin-bottom:4px;font-size:13px;}" +
+      ".inline-choice-explanation.wrong .inline-choice-explanation-title{color:#a33c31;}" +
+      ".inline-choice-explanation.correct .inline-choice-explanation-title{color:#16703f;}" +
       ".inline-choice-explanation p{margin:0;white-space:pre-wrap;line-height:1.65;}" +
-      ".inline-choice-status{margin:12px 0 8px!important;text-align:left!important;font-weight:800!important;font-size:130px!important;line-height:1!important;}" +
+      ".inline-choice-status{margin:10px 0 6px!important;text-align:left!important;font-weight:800!important;font-size:39px!important;line-height:1.1!important;}" +
       ".inline-choice-status.correct{color:#16703f;}" +
       ".inline-choice-status.wrong{color:#a33c31;}" +
       ".inline-answer-summary{margin:14px 0 8px;padding:10px 14px;border-radius:8px;font-weight:800;}" +

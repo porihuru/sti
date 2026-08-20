@@ -216,6 +216,25 @@
     heading.style.textAlign = "center";
   }
 
+  function applyIeLearnLayoutFix() {
+    var document = root.document;
+    var style;
+    if (!document || !document.documentMode) { return; }
+    if (document.getElementById("ieLearnLayoutFix")) { return; }
+    style = document.createElement("style");
+    style.id = "ieLearnLayoutFix";
+    style.type = "text/css";
+    style.styleSheet.cssText =
+      "#learnView > .question-card,#learnView > .feedback-panel{" +
+      "position:relative;width:150%;max-width:calc(100vw - 64px);" +
+      "margin-left:50%;margin-right:0;transform:translateX(-50%);}" +
+      "#learnView #questionArea{width:100%;margin-left:auto;margin-right:auto;}" +
+      "#learnView .choice-list{width:100%;}" +
+      "#learnView .choice-button{width:100%;}" +
+      "#learnView .choice-text{width:100%;max-width:none;}";
+    document.getElementsByTagName("head")[0].appendChild(style);
+  }
+
   root.STILocalDb = {
     headers: HEADERS.slice(0),
     parse: parse,
@@ -228,6 +247,7 @@
     root.addEventListener("DOMContentLoaded", function () {
       setupEditorCategorySuggestions();
       applyIeSetupLayoutFix();
+      applyIeLearnLayoutFix();
     });
   }
 

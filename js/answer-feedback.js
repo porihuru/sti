@@ -183,6 +183,8 @@
       "#learnView #questionArea,#learnView .choice-list,#learnView .choice-item,#learnView .choice-button{" +
       "width:100%!important;max-width:none!important;box-sizing:border-box!important;}" +
       "#learnView .choice-text{display:block!important;width:100%!important;max-width:none!important;text-align:left!important;}" +
+      "#learnView .law-reader-actions{margin:0 0 8px!important;}" +
+      "#learnView .choice-focus-button{display:block!important;margin:0 0 8px!important;}" +
       ".inline-choice-explanation{margin:8px 0 10px;padding:10px 13px;border-radius:8px;}" +
       ".inline-choice-explanation.wrong{background:#fdf1ef;border:1px solid #e6bbb3;color:#5b302a;}" +
       ".inline-choice-explanation.correct{background:#edf8f0;border:1px solid #9dcaaa;color:#245c35;}" +
@@ -200,6 +202,48 @@
       ".inline-next-button{min-width:220px;}"
     ));
     document.getElementsByTagName("head")[0].appendChild(style);
+  }
+
+  function moveFocusButtonsToTop() {
+    var area = byId("questionArea");
+    var readers;
+    var items;
+    var actions;
+    var law;
+    var focusButton;
+    var choiceButton;
+    var i;
+
+    if (!area) { return; }
+
+    readers = area.querySelectorAll(".law-reader");
+    for (i = 0; i < readers.length; i += 1) {
+      actions = readers[i].querySelector(".law-reader-actions");
+      law = readers[i].querySelector(".law-text");
+      if (actions && law && actions.nextSibling !== law) {
+        readers[i].insertBefore(actions, law);
+      }
+    }
+
+    items = area.querySelectorAll(".choice-item");
+    for (i = 0; i < items.length; i += 1) {
+      focusButton = items[i].querySelector(".choice-focus-button");
+      choiceButton = items[i].querySelector(".choice-button");
+      if (focusButton && choiceButton && focusButton.nextSibling !== choiceButton) {
+        items[i].insertBefore(focusButton, choiceButton);
+      }
+    }
+  }
+
+  function installFocusButtonPositioning() {
+    var area = byId("questionArea");
+    var observer;
+    if (!area) { return; }
+    moveFocusButtonsToTop();
+    if (root.MutationObserver) {
+      observer = new root.MutationObserver(function () { moveFocusButtonsToTop(); });
+      observer.observe(area, { childList: true, subtree: true });
+    }
   }
 
   function interceptChoiceClick(event) {
@@ -227,5 +271,6 @@
   installStyles();
   wrapLocalDbParse();
   loadServerRows();
+  installFocusButtonPositioning();
   document.addEventListener("click", interceptChoiceClick, true);
 }(this));

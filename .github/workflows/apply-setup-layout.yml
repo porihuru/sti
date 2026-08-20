@@ -1,0 +1,118 @@
+name: Apply setup layout fix
+
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-setup-layout.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Apply IE setup layout override
+        shell: bash
+        run: |
+          cat >> css/ie11.css <<'EOF'
+
+/* Center and compact the setup screen in IE mode. */
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+  #setupView {
+    width: 94vw;
+    margin-left: calc(50% - 47vw);
+    padding-top: 6px !important;
+    padding-bottom: 10px !important;
+  }
+
+  #setupView .page-heading {
+    display: block;
+    margin: 0 auto 6px !important;
+    text-align: center;
+  }
+  #setupView .page-heading .eyebrow { margin-bottom: 2px; }
+  #setupView .page-heading h1 {
+    margin: 0;
+    font-size: 30px;
+    line-height: 1.2;
+  }
+  #setupView .page-heading > p {
+    margin-top: 2px;
+    line-height: 1.35;
+  }
+
+  #setupView .setup-layout {
+    display: -ms-flexbox;
+    display: flex;
+    -ms-flex-direction: column;
+    flex-direction: column;
+    width: 100%;
+    margin: 0 auto;
+  }
+  #setupView .settings-card {
+    display: block;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 4px 18px;
+    box-sizing: border-box;
+  }
+
+  #setupView .form-section {
+    padding-top: 8px !important;
+    padding-bottom: 9px !important;
+  }
+  #setupView .form-section h2 {
+    margin-bottom: 6px;
+    font-size: 16px;
+    line-height: 1.25;
+  }
+  #setupView .form-section h2 > span {
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
+  }
+
+  #setupView .mode-option {
+    margin-bottom: 6px;
+  }
+  #setupView .form-grid > .field {
+    margin-bottom: 8px;
+  }
+  #setupView .field > span {
+    margin-bottom: 2px;
+    line-height: 1.25;
+  }
+  #setupView .field select,
+  #setupView .field input {
+    min-height: 34px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+  #setupView .count-presets {
+    margin-top: 3px;
+  }
+  #setupView .count-presets button {
+    min-height: 28px;
+    padding-top: 3px;
+    padding-bottom: 3px;
+  }
+  #setupView .form-message,
+  #setupView .start-note {
+    margin-top: 3px;
+    margin-bottom: 0;
+    line-height: 1.3;
+  }
+}
+EOF
+
+          rm -f .github/workflows/apply-setup-layout.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add css/ie11.css .github/workflows/apply-setup-layout.yml
+          git commit -m "IEモードの出題条件画面を中央配置し余白を圧縮"
+          git push origin main

@@ -183,6 +183,8 @@
       "#learnView #questionArea,#learnView .choice-list,#learnView .choice-item,#learnView .choice-button{" +
       "width:100%!important;max-width:none!important;box-sizing:border-box!important;}" +
       "#learnView .choice-text{display:block!important;width:100%!important;max-width:none!important;text-align:left!important;}" +
+      "#learnView #questionArea>.law-reader{width:calc(100% - 40px)!important;max-width:none!important;margin-left:20px!important;margin-right:20px!important;box-sizing:border-box!important;}" +
+      "#learnView #questionArea>.law-reader>.law-text{width:100%!important;max-width:none!important;box-sizing:border-box!important;}" +
       "#learnView .law-reader-actions{margin:0 0 8px!important;}" +
       "#learnView .choice-focus-button{display:block!important;margin:0 0 8px!important;}" +
       ".inline-choice-explanation{margin:8px 0 10px;padding:10px 13px;border-radius:8px;}" +

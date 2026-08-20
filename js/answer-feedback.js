@@ -2,6 +2,7 @@
   "use strict";
 
   var rowsByQuestion = {};
+  var rowsByOriginal = {};
   var originalParse;
   var suppressing = false;
 
@@ -15,9 +16,11 @@
     var i;
     var row;
     rowsByQuestion = {};
+    rowsByOriginal = {};
     for (i = 0; i < rows.length; i += 1) {
       row = rows[i];
       if (row && row.question) { rowsByQuestion[trim(row.question)] = row; }
+      if (row && row.original) { rowsByOriginal[trim(row.original)] = row; }
     }
   }
 
@@ -47,10 +50,24 @@
     return null;
   }
 
+  function findJudgeButton(target) {
+    var node = target;
+    while (node && node !== document) {
+      if ((" " + node.className + " ").indexOf(" judge-button ") >= 0) { return node; }
+      node = node.parentNode;
+    }
+    return null;
+  }
+
   function isFourChoiceFeedbackMode() {
     var label = byId("sessionModeLabel");
     var value = label ? trim(label.textContent) : "";
     return value === "4択・正しい条文" || value === "4択・誤った条文";
+  }
+
+  function isTrueFalseFeedbackMode() {
+    var label = byId("sessionModeLabel");
+    return label ? trim(label.textContent) === "正誤問題" : false;
   }
 
   function create(tag, className, text) {
@@ -58,6 +75,11 @@
     if (className) { node.className = className; }
     if (text !== undefined && text !== null) { node.appendChild(document.createTextNode(String(text))); }
     return node;
+  }
+
+  function addClass(node, className) {
+    if (!node || (" " + node.className + " ").indexOf(" " + className + " ") >= 0) { return; }
+    node.className += " " + className;
   }
 
   function explanationInfoForButton(button) {
@@ -68,6 +90,26 @@
       return { wrong: true, text: row.explanation };
     }
     return { wrong: false, text: "この選択肢は正しい条文です。" };
+  }
+
+  function trueFalseExplanationInfo() {
+    var area = byId("questionArea");
+    var law = area ? area.querySelector(".law-text") : null;
+    var text = law ? trim(law.textContent) : "";
+    var row = rowsByQuestion[text];
+    var fallback;
+    if (row && row.explanation) {
+      return { wrong: true, text: row.explanation };
+    }
+    row = rowsByOriginal[text];
+    if (row) {
+      return { wrong: false, text: "この条文は正しい条文です。" };
+    }
+    fallback = byId("feedbackBody");
+    return {
+      wrong: false,
+      text: fallback && trim(fallback.textContent) ? trim(fallback.textContent) : "回答内容を確認してください。"
+    };
   }
 
   function appendExplanation(choiceItem, button) {
@@ -90,6 +132,19 @@
     choiceItem.appendChild(status);
   }
 
+  function createNextButton() {
+    var nextWrap = create("div", "inline-next-wrap");
+    var nextLabel = byId("nextButton") ? byId("nextButton").textContent : "次の問題へ";
+    var next = create("button", "button primary inline-next-button", nextLabel);
+    next.type = "button";
+    next.addEventListener("click", function () {
+      var original = byId("nextButton");
+      if (original) { original.click(); }
+    });
+    nextWrap.appendChild(next);
+    return nextWrap;
+  }
+
   function renderInlineFeedback(selectedIndex) {
     var area = byId("questionArea");
     var panel = byId("feedbackPanel");
@@ -101,9 +156,6 @@
     var correctIndex = -1;
     var i;
     var summary;
-    var nextWrap;
-    var next;
-    var nextLabel;
 
     if (!area || !isFourChoiceFeedbackMode()) { return; }
     list = area.querySelector(".choice-list");
@@ -139,17 +191,72 @@
       summary.appendChild(document.createTextNode("あなたの回答：" + String.fromCharCode(65 + selectedIndex) + " → 不正解　正解：" + String.fromCharCode(65 + correctIndex)));
     }
     area.appendChild(summary);
+    area.appendChild(createNextButton());
+  }
 
-    nextWrap = create("div", "inline-next-wrap");
-    nextLabel = byId("nextButton") ? byId("nextButton").textContent : "次の問題へ";
-    next = create("button", "button primary inline-next-button", nextLabel);
-    next.type = "button";
-    next.addEventListener("click", function () {
-      var original = byId("nextButton");
-      if (original) { original.click(); }
-    });
-    nextWrap.appendChild(next);
-    area.appendChild(nextWrap);
+  function renderTrueFalseInlineFeedback(selectedButton) {
+    var area = byId("questionArea");
+    var panel = byId("feedbackPanel");
+    var buttonsContainer;
+    var buttons;
+    var selectedIsTrue;
+    var selectedCorrect;
+    var correctIsTrue;
+    var i;
+    var buttonIsTrue;
+    var feedback;
+    var status;
+    var summary;
+    var info;
+    var explanation;
+    var title;
+
+    if (!area || !selectedButton || !isTrueFalseFeedbackMode()) { return; }
+    if (area.querySelector(".inline-truefalse-feedback")) { return; }
+    buttonsContainer = area.querySelector(".judge-buttons");
+    if (!buttonsContainer) { return; }
+
+    selectedIsTrue = selectedButton.getAttribute("data-judgement") === "true";
+    selectedCorrect = panel && (" " + panel.className + " ").indexOf(" correct ") >= 0;
+    correctIsTrue = selectedCorrect ? selectedIsTrue : !selectedIsTrue;
+    buttons = buttonsContainer.querySelectorAll(".judge-button");
+
+    for (i = 0; i < buttons.length; i += 1) {
+      buttonIsTrue = buttons[i].getAttribute("data-judgement") === "true";
+      if (buttonIsTrue === correctIsTrue) { addClass(buttons[i], "inline-judge-correct"); }
+      if (buttons[i] === selectedButton && !selectedCorrect) { addClass(buttons[i], "inline-judge-wrong"); }
+    }
+
+    if (panel) { panel.hidden = true; }
+
+    feedback = create("div", "inline-truefalse-feedback " + (selectedCorrect ? "correct" : "wrong"));
+    status = create("div", "inline-choice-status " + (selectedCorrect ? "correct" : "wrong"), selectedCorrect ? "○ 正解" : "× 不正解");
+    feedback.appendChild(status);
+
+    summary = create("div", "inline-answer-summary " + (selectedCorrect ? "correct" : "wrong"));
+    if (selectedCorrect) {
+      summary.appendChild(document.createTextNode("あなたの回答：" + (selectedIsTrue ? "正しい条文" : "誤った条文") + " → 正解"));
+    } else {
+      summary.appendChild(document.createTextNode(
+        "あなたの回答：" + (selectedIsTrue ? "正しい条文" : "誤った条文") +
+        " → 不正解　正解：" + (correctIsTrue ? "正しい条文" : "誤った条文")
+      ));
+    }
+    feedback.appendChild(summary);
+
+    info = trueFalseExplanationInfo();
+    explanation = create("div", "inline-choice-explanation " + (info.wrong ? "wrong" : "correct"));
+    title = create("strong", "inline-choice-explanation-title", info.wrong ? "解説（誤り）" : "解説");
+    explanation.appendChild(title);
+    explanation.appendChild(create("p", "", info.text));
+    feedback.appendChild(explanation);
+    feedback.appendChild(createNextButton());
+
+    if (buttonsContainer.nextSibling) {
+      area.insertBefore(feedback, buttonsContainer.nextSibling);
+    } else {
+      area.appendChild(feedback);
+    }
   }
 
   function installStyles() {
@@ -180,6 +287,11 @@
       "#learnView>.session-header,#learnView>.question-card,#learnView>.feedback-panel{" +
       "position:relative!important;left:50%!important;width:80vw!important;max-width:80vw!important;" +
       "margin-left:-40vw!important;margin-right:0!important;transform:none!important;box-sizing:border-box!important;}" +
+      "#learnView>.session-header{display:-ms-flexbox!important;display:flex!important;-ms-flex-wrap:wrap!important;flex-wrap:wrap!important;-ms-flex-align:center!important;align-items:center!important;}" +
+      "#learnView>.session-header>div:first-child{min-width:0!important;-ms-flex:1 1 180px!important;flex:1 1 180px!important;}" +
+      "#learnView>.session-header .session-progress{min-width:220px!important;-ms-flex:1 1 280px!important;flex:1 1 280px!important;margin-left:16px!important;margin-right:16px!important;}" +
+      "#learnView>.session-header .session-header-actions{display:-ms-flexbox!important;display:flex!important;-ms-flex:0 0 auto!important;flex:0 0 auto!important;-ms-flex-wrap:wrap!important;flex-wrap:wrap!important;max-width:100%!important;margin-left:auto!important;margin-right:0!important;box-sizing:border-box!important;}" +
+      "#learnView>.session-header .session-header-actions .button{max-width:100%!important;box-sizing:border-box!important;white-space:nowrap!important;}" +
       "#learnView #questionArea,#learnView .choice-list,#learnView .choice-item,#learnView .choice-button{" +
       "width:100%!important;max-width:none!important;box-sizing:border-box!important;}" +
       "#learnView .choice-text{display:block!important;width:100%!important;max-width:none!important;text-align:left!important;}" +
@@ -200,6 +312,9 @@
       ".inline-answer-summary{margin:14px 0 8px;padding:10px 14px;border-radius:8px;font-weight:800;}" +
       ".inline-answer-summary.correct{color:#116535;background:#e9f5ec;border:1px solid #76b98b;}" +
       ".inline-answer-summary.wrong{color:#9b3027;background:#fdf0ee;border:1px solid #df8d83;}" +
+      ".inline-truefalse-feedback{margin:14px 0 4px;padding:12px 14px;background:#fff;border:1px solid #d8d4c8;border-radius:12px;box-sizing:border-box;}" +
+      ".judge-button.inline-judge-correct{opacity:1!important;background:#e5f3ef!important;border-color:#087f73!important;}" +
+      ".judge-button.inline-judge-wrong{opacity:1!important;background:#f8e4df!important;border-color:#c95c4b!important;}" +
       ".inline-next-wrap{text-align:center;margin:14px 0 4px;}" +
       ".inline-next-button{min-width:220px;}"
     ));
@@ -248,6 +363,20 @@
     }
   }
 
+  function suppressFeedbackScroll(panel) {
+    var originalScroll = panel && panel.scrollIntoView;
+    if (panel && originalScroll) {
+      suppressing = true;
+      panel.scrollIntoView = function () {};
+    }
+    return originalScroll;
+  }
+
+  function restoreFeedbackScroll(panel, originalScroll) {
+    if (panel && originalScroll) { panel.scrollIntoView = originalScroll; }
+    suppressing = false;
+  }
+
   function interceptChoiceClick(event) {
     var button = findChoiceButton(event.target);
     var panel;
@@ -258,15 +387,24 @@
     if (isNaN(index)) { return; }
 
     panel = byId("feedbackPanel");
-    originalScroll = panel && panel.scrollIntoView;
-    if (panel && originalScroll) {
-      suppressing = true;
-      panel.scrollIntoView = function () {};
-    }
+    originalScroll = suppressFeedbackScroll(panel);
     root.setTimeout(function () {
       renderInlineFeedback(index);
-      if (panel && originalScroll) { panel.scrollIntoView = originalScroll; }
-      suppressing = false;
+      restoreFeedbackScroll(panel, originalScroll);
+    }, 0);
+  }
+
+  function interceptTrueFalseClick(event) {
+    var button = findJudgeButton(event.target);
+    var panel;
+    var originalScroll;
+    if (!button || !isTrueFalseFeedbackMode() || button.disabled || suppressing) { return; }
+
+    panel = byId("feedbackPanel");
+    originalScroll = suppressFeedbackScroll(panel);
+    root.setTimeout(function () {
+      renderTrueFalseInlineFeedback(button);
+      restoreFeedbackScroll(panel, originalScroll);
     }, 0);
   }
 
@@ -275,4 +413,5 @@
   loadServerRows();
   installFocusButtonPositioning();
   document.addEventListener("click", interceptChoiceClick, true);
+  document.addEventListener("click", interceptTrueFalseClick, true);
 }(this));

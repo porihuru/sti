@@ -616,6 +616,7 @@ body.modal-open { overflow: hidden; }
 .editor-toolbar-actions { display: flex; flex: 0 0 auto; gap: 9px; }
 .editor-layout { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 18px; align-items: start; }
 .editor-records { position: sticky; top: 18px; padding: 20px; }
+.record-position { margin: 0 0 2px; color: var(--ink); font-size: 12px; font-weight: 700; }
 .record-count { margin: 14px 0 7px; color: var(--ink-soft); font-size: 12px; }
 .record-select { width: 100%; min-height: 420px; padding: 5px; border: 1px solid #bdb9ad; border-radius: 9px; }
 .record-select option { padding: 7px 6px; }
@@ -920,13 +921,23 @@ body.modal-open { overflow: hidden; }
     height: 32px;
     padding: 5px 7px;
   }
-  .record-search-row .record-count {
+  .editor-records-compact > .record-count {
     -ms-flex: 0 0 auto;
     flex: 0 0 auto;
     margin: 0 0 6px;
     font-size: 11px;
     white-space: nowrap;
   }
+  .record-navigation-top {
+    -ms-flex: 0 0 116px;
+    flex: 0 0 116px;
+    margin: 0 0 0 8px;
+  }
+  .record-navigation-top .button {
+    min-height: 32px;
+    padding: 5px 6px;
+  }
+  .record-position { margin: 2px 0 0; font-size: 11px; white-space: nowrap; }
   .record-status-legend {
     -ms-flex-align: center;
     align-items: center;
@@ -954,8 +965,12 @@ body.modal-open { overflow: hidden; }
     font-family: "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
     font-size: 12px;
     line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .record-navigation { margin-top: 7px; }
+  .record-navigation-top { margin-top: 0; }
   .record-navigation .button {
     min-height: 30px;
     padding: 5px 8px;

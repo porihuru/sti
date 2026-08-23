@@ -251,6 +251,8 @@
               <strong id="editorFilename">-</strong>
             </div>
             <div class="editor-change-summary" id="editorChangeSummary" aria-label="未保存の変更">
+              <strong class="change-distribution">重要度 1:<span id="editorImportance1Count">0</span> 2:<span id="editorImportance2Count">0</span> 3:<span id="editorImportance3Count">0</span> 4:<span id="editorImportance4Count">0</span></strong>
+              <strong class="change-distribution">難易度 初級:<span id="editorDifficultyBasicCount">0</span> 中級:<span id="editorDifficultyMiddleCount">0</span> 上級:<span id="editorDifficultyAdvancedCount">0</span></strong>
               <span>未保存</span>
               <strong class="change-added">追加 <span id="editorAddedCount">0</span></strong>
               <strong class="change-edited">編集 <span id="editorEditedCount">0</span></strong>
@@ -270,8 +272,13 @@
                   <span>レコード検索</span>
                   <input id="editorSearch" type="search" placeholder="ID・分類・条文">
                 </label>
-                <p class="record-count" id="editorRecordCount"></p>
+                <div class="record-navigation record-navigation-top" aria-label="レコード移動">
+                  <button class="button quiet" id="previousRecordButtonTop" type="button">前へ</button>
+                  <button class="button quiet" id="nextRecordButtonTop" type="button">次へ</button>
+                </div>
               </div>
+              <p class="record-position" id="editorRecordPosition"></p>
+              <p class="record-count" id="editorRecordCount"></p>
               <div class="record-status-legend" aria-label="変更状態">
                 <span class="record-status-normal">通常</span>
                 <span class="record-status-added">追加</span>
@@ -295,6 +302,8 @@
                 <div class="record-editor-heading-side">
                   <span class="unsaved-badge" id="unsavedBadge" hidden>未保存</span>
                   <div class="record-editor-heading-actions">
+                    <button class="button quiet" id="previousRecordButtonEditorTop" type="button">前へ</button>
+                    <button class="button quiet" id="nextRecordButtonEditorTop" type="button">次へ</button>
                     <button class="button danger" id="deleteRecordButtonTop" type="button" data-delete-record>削除</button>
                     <button class="button primary" id="saveRecordButtonTop" type="button" data-save-record>この変更を確定</button>
                   </div>

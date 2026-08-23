@@ -1197,12 +1197,28 @@
 
   function updateEditorNavigation(rows) {
     var currentIndex = -1;
+    var position = byId("editorRecordPosition");
+    var previousDisabled;
+    var nextDisabled;
     var i;
     for (i = 0; i < rows.length; i += 1) {
       if (rows[i].id === state.editor.currentId) { currentIndex = i; break; }
     }
-    byId("previousRecordButton").disabled = state.editor.isNew || currentIndex <= 0;
-    byId("nextRecordButton").disabled = state.editor.isNew || currentIndex < 0 || currentIndex >= rows.length - 1;
+    previousDisabled = state.editor.isNew || currentIndex <= 0;
+    nextDisabled = state.editor.isNew || currentIndex < 0 || currentIndex >= rows.length - 1;
+    byId("previousRecordButton").disabled = previousDisabled;
+    byId("previousRecordButtonTop").disabled = previousDisabled;
+    byId("previousRecordButtonEditorTop").disabled = previousDisabled;
+    byId("nextRecordButton").disabled = nextDisabled;
+    byId("nextRecordButtonTop").disabled = nextDisabled;
+    byId("nextRecordButtonEditorTop").disabled = nextDisabled;
+    if (state.editor.isNew) {
+      position.textContent = "現在のレコード：新規入力";
+    } else if (currentIndex < 0) {
+      position.textContent = rows.length ? "現在のレコード：検索結果外" : "現在のレコード：該当なし";
+    } else {
+      position.textContent = "現在のレコード：" + (currentIndex + 1).toLocaleString("ja-JP") + "件目／" + rows.length.toLocaleString("ja-JP") + "件";
+    }
   }
 
   function openEditorRecord(id) {
@@ -1583,7 +1599,19 @@
     byId("previousRecordButton").addEventListener("click", function () {
       requestEditorAction(function () { navigateEditorRecord(-1); });
     });
+    byId("previousRecordButtonTop").addEventListener("click", function () {
+      requestEditorAction(function () { navigateEditorRecord(-1); });
+    });
+    byId("previousRecordButtonEditorTop").addEventListener("click", function () {
+      requestEditorAction(function () { navigateEditorRecord(-1); });
+    });
     byId("nextRecordButton").addEventListener("click", function () {
+      requestEditorAction(function () { navigateEditorRecord(1); });
+    });
+    byId("nextRecordButtonTop").addEventListener("click", function () {
+      requestEditorAction(function () { navigateEditorRecord(1); });
+    });
+    byId("nextRecordButtonEditorTop").addEventListener("click", function () {
       requestEditorAction(function () { navigateEditorRecord(1); });
     });
     byId("addRecordButton").addEventListener("click", function () { requestEditorAction(addEditorRecord); });
@@ -1859,8 +1887,11 @@
       var added = 0;
       var edited = 0;
       var deleted = 0;
+      var importance = { "1": 0, "2": 0, "3": 0, "4": 0 };
+      var difficulty = { "初級": 0, "中級": 0, "上級": 0 };
       var key;
       var value;
+      var i;
       for (key in batch.status) {
         if (!batch.status.hasOwnProperty(key)) { continue; }
         value = batch.status[key];
@@ -1868,9 +1899,20 @@
         else if (value === "edited") { edited += 1; }
         else if (value === "deleted") { deleted += 1; }
       }
+      for (i = 0; i < batch.rows.length; i += 1) {
+        importance[String(batch.rows[i].importance)] = (importance[String(batch.rows[i].importance)] || 0) + 1;
+        difficulty[batch.rows[i].difficulty] = (difficulty[batch.rows[i].difficulty] || 0) + 1;
+      }
       byId("editorAddedCount").textContent = added;
       byId("editorEditedCount").textContent = edited;
       byId("editorDeletedCount").textContent = deleted;
+      byId("editorImportance1Count").textContent = importance["1"];
+      byId("editorImportance2Count").textContent = importance["2"];
+      byId("editorImportance3Count").textContent = importance["3"];
+      byId("editorImportance4Count").textContent = importance["4"];
+      byId("editorDifficultyBasicCount").textContent = difficulty["初級"];
+      byId("editorDifficultyMiddleCount").textContent = difficulty["中級"];
+      byId("editorDifficultyAdvancedCount").textContent = difficulty["上級"];
       byId("saveAllCsvButton").disabled = added + edited + deleted === 0;
     }
 
@@ -1972,6 +2014,7 @@
           (rows[i].original.length > 28 ? rows[i].original.substring(0, 28) + "…" : rows[i].original);
         button = document.createElement("button");
         button.type = "button";
+        button.className = "record-list-item";
         button.setAttribute("data-ie-record-id", String(rows[i].id));
         button.appendChild(document.createTextNode(label));
         button.style.display = "block";
@@ -1998,12 +2041,28 @@
 
     function updateNavigation(rows) {
       var index = -1;
+      var position = byId("editorRecordPosition");
+      var previousDisabled;
+      var nextDisabled;
       var i;
       for (i = 0; i < rows.length; i += 1) {
         if (rows[i].id === batch.currentId) { index = i; break; }
       }
-      byId("previousRecordButton").disabled = batch.isNew || index <= 0;
-      byId("nextRecordButton").disabled = batch.isNew || index < 0 || index >= rows.length - 1;
+      previousDisabled = batch.isNew || index <= 0;
+      nextDisabled = batch.isNew || index < 0 || index >= rows.length - 1;
+      byId("previousRecordButton").disabled = previousDisabled;
+      byId("previousRecordButtonTop").disabled = previousDisabled;
+      byId("previousRecordButtonEditorTop").disabled = previousDisabled;
+      byId("nextRecordButton").disabled = nextDisabled;
+      byId("nextRecordButtonTop").disabled = nextDisabled;
+      byId("nextRecordButtonEditorTop").disabled = nextDisabled;
+      if (batch.isNew) {
+        position.textContent = "現在のレコード：新規入力";
+      } else if (index < 0) {
+        position.textContent = rows.length ? "現在のレコード：検索結果外" : "現在のレコード：該当なし";
+      } else {
+        position.textContent = "現在のレコード：" + (index + 1).toLocaleString("ja-JP") + "件目／" + rows.length.toLocaleString("ja-JP") + "件";
+      }
     }
 
     function openRecord(id) {
@@ -2288,11 +2347,14 @@
         toggleDelete();
         return;
       }
-      if (id === "previousRecordButton" || id === "nextRecordButton") {
+      if (id === "previousRecordButton" || id === "previousRecordButtonTop" ||
+          id === "previousRecordButtonEditorTop" || id === "nextRecordButton" ||
+          id === "nextRecordButtonTop" || id === "nextRecordButtonEditorTop") {
         stopEvent(event);
         if (batch.dirty && !window.confirm("現在入力中の変更を破棄して移動しますか？")) { return; }
         setDirty(false);
-        navigate(id === "previousRecordButton" ? -1 : 1);
+        navigate(id === "previousRecordButton" || id === "previousRecordButtonTop" ||
+          id === "previousRecordButtonEditorTop" ? -1 : 1);
         return;
       }
       if (id === "saveAllCsvButton") { stopEvent(event); saveAll(); return; }

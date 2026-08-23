@@ -69,6 +69,7 @@
   .editor-file-card p,
   .editor-file-summary,
   .editor-toolbar-label,
+  .record-position,
   .record-count,
   .editor-leave-panel > p:not(.eyebrow),
   .editor-fields input[readonly] { color: #4f615d; }
@@ -695,13 +696,23 @@
     height: 32px;
     padding: 5px 7px;
   }
-  .record-search-row .record-count {
+  .editor-records-compact > .record-count {
     -ms-flex: 0 0 auto;
     flex: 0 0 auto;
     margin: 0 0 6px;
     font-size: 11px;
     white-space: nowrap;
   }
+  .record-navigation-top {
+    -ms-flex: 0 0 116px;
+    flex: 0 0 116px;
+    margin: 0 0 0 8px;
+  }
+  .record-navigation-top .button {
+    min-height: 32px;
+    padding: 5px 6px;
+  }
+  .record-position { margin: 2px 0 0; font-size: 11px; white-space: nowrap; }
   .record-status-legend {
     -ms-flex-align: center;
     align-items: center;
@@ -729,8 +740,12 @@
     font-family: "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
     font-size: 12px;
     line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .record-navigation { margin-top: 7px; }
+  .record-navigation-top { margin-top: 0; }
   .record-navigation .button {
     min-height: 30px;
     padding: 5px 8px;
@@ -1000,6 +1015,7 @@
   .record-navigation {
     margin-top: 10px;
   }
+  .record-navigation-top { margin-top: 0; }
   .compact-editor-fields-all > .field {
     margin-right: 10px;
     margin-bottom: 10px;

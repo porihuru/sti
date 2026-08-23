@@ -255,3 +255,45 @@
     module.exports = root.STILocalDb;
   }
 }(this));
+
+// Load the optional SharePoint access counter without coupling it to STI startup.
+(function (root) {
+  "use strict";
+
+  var document = root && root.document;
+
+  if (!document) { return; }
+
+  function loadAccessCounter() {
+    var head;
+    var script;
+
+    try {
+      if (document.getElementById("stiAccessCounterScript")) { return; }
+      head = document.getElementsByTagName("head")[0];
+      if (!head) { return; }
+
+      script = document.createElement("script");
+      script.id = "stiAccessCounterScript";
+      script.type = "text/javascript";
+      script.src = "js/accesscounter.js";
+      script.async = true;
+      script.onerror = function () {
+        // Counter loading failures must never affect the main STI application.
+      };
+      head.appendChild(script);
+    } catch (e) {
+      // Intentionally ignored: access counting is an optional side feature.
+    }
+  }
+
+  if (document.readyState === "loading") {
+    if (root.addEventListener) {
+      root.addEventListener("DOMContentLoaded", loadAccessCounter, false);
+    } else if (root.attachEvent) {
+      root.attachEvent("onload", loadAccessCounter);
+    }
+  } else {
+    loadAccessCounter();
+  }
+}(this));

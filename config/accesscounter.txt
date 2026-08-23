@@ -1,0 +1,4 @@
+# STI access counter configuration
+# SharePoint site is the same location used by typ.
+WEB_ROOT=/na/NA/NAFin/fin_csm
+COUNTER_LIST=stiaccesscounter

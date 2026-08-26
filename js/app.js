@@ -575,7 +575,6 @@
     var choiceItem;
     var letter;
     var text;
-    var focusButton;
     byId("questionInstruction").textContent = state.session.config.mode === "fourCorrect" ?
       "4つのうち、正しい条文を1つ選んでください。" :
       "4つのうち、誤っている条文を1つ選んでください。";
@@ -589,21 +588,10 @@
       button.appendChild(letter);
       button.appendChild(text);
       button.addEventListener("click", fourChoiceClick);
-      focusButton = element("button", "focus-reading-button choice-focus-button", letters[i] + "を集中して読む");
-      focusButton.type = "button";
-      focusButton.setAttribute("data-focus-index", String(i));
-      focusButton.addEventListener("click", fourChoiceFocusClick);
       choiceItem.appendChild(button);
-      choiceItem.appendChild(focusButton);
       list.appendChild(choiceItem);
     }
     area.appendChild(list);
-  }
-
-  function fourChoiceFocusClick(event) {
-    var index = parseInt(event.currentTarget.getAttribute("data-focus-index"), 10);
-    var current = state.session.current;
-    openLawModal("選択肢 " + letters[index] + " の全文", current.options[index].text, event.currentTarget);
   }
 
   function fourChoiceClick(event) {

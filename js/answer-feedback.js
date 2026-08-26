@@ -5,6 +5,7 @@
   var rowsByOriginal = {};
   var originalParse;
   var suppressing = false;
+  var activeAnswerPopup = null;
 
   function byId(id) { return document.getElementById(id); }
 
@@ -82,6 +83,13 @@
     node.className += " " + className;
   }
 
+  function removeAnswerPopup() {
+    if (activeAnswerPopup && activeAnswerPopup.parentNode) {
+      activeAnswerPopup.parentNode.removeChild(activeAnswerPopup);
+    }
+    activeAnswerPopup = null;
+  }
+
   function explanationInfoForButton(button) {
     var textNode = button.querySelector(".choice-text");
     var text = textNode ? trim(textNode.textContent) : "";
@@ -139,6 +147,7 @@
     next.type = "button";
     next.addEventListener("click", function () {
       var original = byId("nextButton");
+      removeAnswerPopup();
       if (original) { original.click(); }
     });
     nextWrap.appendChild(next);
@@ -176,21 +185,28 @@
     if (panel) { panel.hidden = true; }
 
     for (i = 0; i < buttons.length; i += 1) {
-      if (i === correctIndex) {
-        appendStatus(items[i], "○ 正解", true);
-      } else if (i === selectedIndex) {
-        appendStatus(items[i], "× 不正解・あなたの回答", false);
-      }
       appendExplanation(items[i], buttons[i]);
     }
 
-    summary = create("div", "inline-answer-summary " + (selectedCorrect ? "correct" : "wrong"));
+    removeAnswerPopup();
+    summary = create("button", "answer-result-popup " + (selectedCorrect ? "correct" : "wrong"));
+    summary.type = "button";
+    summary.setAttribute("aria-controls", "feedbackPanel");
+    summary.setAttribute("aria-expanded", "false");
     if (selectedCorrect) {
       summary.appendChild(document.createTextNode("あなたの回答：" + String.fromCharCode(65 + selectedIndex) + " → 正解"));
     } else {
       summary.appendChild(document.createTextNode("あなたの回答：" + String.fromCharCode(65 + selectedIndex) + " → 不正解　正解：" + String.fromCharCode(65 + correctIndex)));
     }
-    area.appendChild(summary);
+    summary.addEventListener("click", function () {
+      if (!panel) { return; }
+      panel.hidden = false;
+      summary.setAttribute("aria-expanded", "true");
+      removeAnswerPopup();
+      panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    activeAnswerPopup = summary;
+    document.body.appendChild(summary);
     area.appendChild(createNextButton());
   }
 
@@ -309,9 +325,16 @@
       ".inline-choice-status{margin:10px 0 6px!important;text-align:left!important;font-weight:800!important;font-size:39px!important;line-height:1.1!important;}" +
       ".inline-choice-status.correct{color:#16703f;}" +
       ".inline-choice-status.wrong{color:#a33c31;}" +
-      ".inline-answer-summary{margin:14px 0 8px;padding:10px 14px;border-radius:8px;font-weight:800;}" +
+      ".inline-answer-summary{display:block;width:100%;margin:14px 0 8px;padding:10px 14px;border-radius:8px;font:inherit;font-weight:800;text-align:left;cursor:pointer;}" +
       ".inline-answer-summary.correct{color:#116535;background:#e9f5ec;border:1px solid #76b98b;}" +
       ".inline-answer-summary.wrong{color:#9b3027;background:#fdf0ee;border:1px solid #df8d83;}" +
+      ".inline-answer-summary:hover{filter:brightness(.97);}" +
+      ".inline-answer-summary:focus{outline:2px solid #244a61;outline-offset:2px;}" +
+      ".answer-result-popup{position:fixed;top:24px;left:50%;z-index:1000;width:calc(100vw - 32px);max-width:680px;margin:0;padding:14px 18px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.22);font:inherit;font-weight:800;text-align:left;cursor:pointer;transform:translateX(-50%);}" +
+      ".answer-result-popup.correct{color:#116535;background:#e9f5ec;border:1px solid #76b98b;}" +
+      ".answer-result-popup.wrong{color:#9b3027;background:#fdf0ee;border:1px solid #df8d83;}" +
+      ".answer-result-popup:hover{filter:brightness(.97);}" +
+      ".answer-result-popup:focus{outline:2px solid #244a61;outline-offset:2px;}" +
       ".inline-truefalse-feedback{margin:14px 0 4px;padding:12px 14px;background:#fff;border:1px solid #d8d4c8;border-radius:12px;box-sizing:border-box;}" +
       ".judge-button.inline-judge-correct{opacity:1!important;background:#e5f3ef!important;border-color:#087f73!important;}" +
       ".judge-button.inline-judge-wrong{opacity:1!important;background:#f8e4df!important;border-color:#c95c4b!important;}" +
@@ -407,6 +430,12 @@
       restoreFeedbackScroll(panel, originalScroll);
     }, 0);
   }
+
+  document.addEventListener("click", function (event) {
+    var target = event.target;
+    if (!activeAnswerPopup || (target && activeAnswerPopup.contains(target))) { return; }
+    removeAnswerPopup();
+  });
 
   installStyles();
   wrapLocalDbParse();

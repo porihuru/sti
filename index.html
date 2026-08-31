@@ -356,21 +356,22 @@
         </div>
 
         <article class="question-card">
-          <div class="reader-toolbar" aria-label="条文の表示設定">
-            <span class="reader-toolbar-label">文字サイズ</span>
-            <div class="text-size-buttons" role="group" aria-label="条文の文字サイズ">
+          <div class="question-card-content">
+            <div class="reader-toolbar" aria-label="条文の表示設定">
+              <span class="reader-toolbar-label">文字サイズ</span>
+              <p class="question-instruction" id="questionInstruction"></p>
+              <div class="text-size-buttons" role="group" aria-label="条文の文字サイズ">
               <button type="button" data-text-size="small">小</button>
               <button type="button" data-text-size="medium" class="selected">標準</button>
               <button type="button" data-text-size="large">大</button>
             </div>
             <span class="reader-toolbar-note">長い条文は「集中して読む」で全画面表示できます</span>
+            </div>
+            <div class="question-meta" id="questionMeta"></div>
+            <div id="questionArea"></div>
           </div>
-          <div class="question-meta" id="questionMeta"></div>
-          <p class="question-instruction" id="questionInstruction"></p>
-          <div id="questionArea"></div>
-        </article>
 
-        <section class="feedback-panel" id="feedbackPanel" aria-live="polite" hidden>
+          <section class="feedback-panel" id="feedbackPanel" aria-live="polite" hidden>
           <div class="feedback-heading">
             <span class="result-symbol" id="resultSymbol" aria-hidden="true"></span>
             <div>
@@ -380,7 +381,8 @@
           </div>
           <div id="feedbackBody"></div>
           <button class="button primary" id="nextButton" type="button">次の問題へ</button>
-        </section>
+          </section>
+        </article>
       </section>
 
       <section class="view" id="resultView" aria-labelledby="resultTitle">

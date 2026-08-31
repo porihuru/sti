@@ -1,5 +1,5 @@
-// Stabilize four-choice feedback layout and make the result immediately obvious.
-// Keeps A-D choices in place, moves explanations below the list, and shows a clear result line.
+// Compatibility hook kept for deployments that load this optional script.
+// The main app owns the four-choice feedback panel and layout.
 // ES5 / IE11 compatible.
 (function (root) {
   "use strict";
@@ -232,11 +232,7 @@
 
     installStyles();
 
-    document.addEventListener("click", function (event) {
-      var button = findChoiceButton(event.target);
-      if (!button || !isFourChoiceMode() || button.disabled) { return; }
-      root.setTimeout(function () { applyFeedback(button); }, 0);
-    }, true);
+    // 4択の回答結果は app.js のカード内フィードバックにまとめて表示する。
 
     if (root.MutationObserver && instruction) {
       observer = new root.MutationObserver(function () { cleanupForNewQuestion(); });

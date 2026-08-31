@@ -439,6 +439,8 @@
   function renderQuestion() {
     var session = state.session;
     var area = byId("questionArea");
+    var learnView = byId("learnView");
+    var questionCard = learnView ? learnView.querySelector(".question-card") : null;
     var current;
     var progress;
     var title;
@@ -457,6 +459,24 @@
     byId("progressText").textContent = progress + " / " + session.rows.length;
     byId("progressBar").style.width = Math.round(progress / session.rows.length * 100) + "%";
     byId("browsePrintButton").hidden = session.config.mode !== "browse";
+    if (learnView) {
+      learnView.classList.remove("four-choice-layout");
+      learnView.classList.remove("four-choice-session");
+      learnView.classList.remove("true-false-session");
+      if (session.config.mode === "fourCorrect" || session.config.mode === "fourWrong" || session.config.mode === "trueFalse") {
+        learnView.classList.add("four-choice-layout");
+      }
+      if (session.config.mode === "fourCorrect" || session.config.mode === "fourWrong") {
+        learnView.classList.add("four-choice-session");
+      }
+      if (session.config.mode === "trueFalse") {
+        learnView.classList.add("true-false-session");
+      }
+    }
+    if (questionCard) { questionCard.classList.remove("four-choice-card"); }
+    if (questionCard && (session.config.mode === "fourCorrect" || session.config.mode === "fourWrong")) {
+      questionCard.classList.add("four-choice-card");
+    }
     renderMeta(current.target);
     byId("feedbackPanel").hidden = true;
     byId("feedbackPanel").className = "feedback-panel";
@@ -616,7 +636,11 @@
     correct = judgement === current.isOriginal;
     button.classList.add("chosen");
     disableButtons(container);
-    details = [{ row: current.target, explanation: current.isOriginal ? "表示された条文は元の正しい条文です。" : current.target.explanation }];
+    details = [{
+      row: current.target,
+      explanation: current.isOriginal ? "" : current.target.explanation,
+      isCorrectLaw: current.isOriginal
+    }];
     answerInfo = {
       mode: "trueFalse",
       questionText: current.text,
@@ -636,6 +660,7 @@
     var resultDetails = [];
     var optionSnapshot = [];
     var correctIndex = -1;
+    var targetIndex = -1;
     var i;
     var details = [];
     if (current.answered) { return; }
@@ -649,6 +674,7 @@
         buttons[i].classList.add("answer-correct");
         correctIndex = i;
       }
+      if (current.options[i].row.id === current.target.id) { targetIndex = i; }
       optionSnapshot.push({
         letter: letters[i],
         text: current.options[i].text,
@@ -657,15 +683,24 @@
     }
     if (!option.isAnswer) { button.classList.add("answer-wrong"); }
     for (i = 0; i < current.options.length; i += 1) {
-      if (current.options[i].isWrongText) {
-        details.push({ row: current.options[i].row, explanation: current.options[i].row.explanation });
+      if (current.options[i].isAnswer) {
+        details.push({
+          row: current.options[i].row,
+          explanation: session.config.mode === "fourWrong" ? (current.options[i].row.explanation || "") : "",
+          letter: letters[i],
+          isCorrectOption: true
+        });
+      } else if (current.options[i].isWrongText) {
+        details.push({ row: current.options[i].row, explanation: current.options[i].row.explanation, letter: letters[i] });
+      } else if (session.config.mode === "fourWrong") {
+        details.push({ row: current.options[i].row, explanation: "", letter: letters[i], isCorrectLaw: true });
       }
     }
     if (!option.isAnswer) {
       if (session.config.mode === "fourCorrect") {
-        resultDetails.push({ row: option.row, explanation: option.row.explanation });
+        resultDetails.push({ row: option.row, explanation: option.row.explanation, letter: letters[index] });
       } else {
-        resultDetails.push({ row: current.target, explanation: current.target.explanation });
+        resultDetails.push({ row: current.target, explanation: current.target.explanation, letter: letters[targetIndex] });
       }
     }
     answerInfo = {
@@ -697,24 +732,55 @@
     panel.className = "feedback-panel " + (correct ? "correct" : "incorrect");
     byId("resultSymbol").textContent = correct ? "○" : "×";
     byId("feedbackTitle").textContent = correct ? "正解です" : "不正解です";
-    renderFeedbackBody(target, details);
+    renderFeedbackBody(target, details, answerInfo);
     nextButton.textContent = session.index === session.rows.length - 1 ? "結果を見る" : "次の問題へ";
     panel.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  function renderFeedbackBody(target, details) {
+  function renderFeedbackBody(target, details, answerInfo) {
     var body = byId("feedbackBody");
     var correctSection = element("section", "feedback-section");
+    var answerSummary;
+    var isFourChoice = answerInfo && (answerInfo.mode === "fourCorrect" || answerInfo.mode === "fourWrong");
+    var isTrueFalse = answerInfo && answerInfo.mode === "trueFalse";
+    var isQuizMode = isFourChoice || isTrueFalse;
+    var selectedCorrect = isFourChoice && answerInfo.selectedIndex === answerInfo.correctIndex;
+    var correctChoiceLabel = answerInfo && answerInfo.mode === "fourWrong" ? "誤っている条文" : "正しい条文";
     var i;
     var section;
     clear(body);
-    correctSection.appendChild(element("h3", "", "正しい条文（ID " + target.id + "）"));
-    correctSection.appendChild(createLawReader(target.original, "正しい条文（ID " + target.id + "）", "feedback-law-reader"));
-    body.appendChild(correctSection);
+    if (isFourChoice) {
+      answerSummary = element("div", "feedback-answer-summary " +
+        (selectedCorrect ? "correct" : "incorrect"));
+      answerSummary.appendChild(element("strong", "", "あなたの回答：" + letters[answerInfo.selectedIndex]));
+      answerSummary.appendChild(document.createTextNode("　正解：" + letters[answerInfo.correctIndex]));
+      body.appendChild(answerSummary);
+    } else if (isTrueFalse) {
+      answerSummary = element("div", "feedback-answer-summary " +
+        (answerInfo.userAnswer === answerInfo.correctAnswer ? "correct" : "incorrect"));
+      answerSummary.appendChild(element("strong", "", "あなたの回答：" + answerInfo.userAnswer));
+      answerSummary.appendChild(document.createTextNode("　正解：" + answerInfo.correctAnswer));
+      body.appendChild(answerSummary);
+    }
+    // 学習問題では左側に条文が表示されているため、正しい条文を再掲しない。
+    if (!isQuizMode) {
+      correctSection.appendChild(element("h3", "", "正しい条文（ID " + target.id + "）"));
+      correctSection.appendChild(createLawReader(target.original, "正しい条文（ID " + target.id + "）", "feedback-law-reader"));
+      body.appendChild(correctSection);
+    }
     for (i = 0; i < details.length; i += 1) {
       section = element("section", "feedback-section");
-      section.appendChild(element("h3", "", details.length > 1 ? "変更箇所の解説（ID " + details[i].row.id + "）" : "変更箇所と解説"));
-      section.appendChild(element("p", "", details[i].explanation));
+      if (isFourChoice) {
+        var heading = element("div", "feedback-section-heading");
+        heading.appendChild(element("span", "feedback-choice-icon", details[i].letter || ""));
+        heading.appendChild(element("h3", "", details[i].isCorrectOption ? correctChoiceLabel : (details[i].isCorrectLaw ? "正しい条文" : (details.length > 1 ? "変更箇所の解説（ID " + details[i].row.id + "）" : "変更箇所と解説"))));
+        section.appendChild(heading);
+      } else if (isTrueFalse) {
+        section.appendChild(element("h3", "", details[i].isCorrectLaw ? "正しい条文" : "変更箇所と解説"));
+      } else {
+        section.appendChild(element("h3", "", details.length > 1 ? "変更箇所の解説（ID " + details[i].row.id + "）" : "変更箇所と解説"));
+      }
+      if (details[i].explanation) { section.appendChild(element("p", "", details[i].explanation)); }
       body.appendChild(section);
     }
   }

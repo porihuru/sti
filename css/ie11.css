@@ -1108,3 +1108,132 @@
   }
   .today-card { margin: 0; }
 }
+
+/* 4択カード: IE11でも左右5%と75%/25%の比率を固定する。 */
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+  .four-choice-layout > .question-card {
+    display: -ms-flexbox;
+    display: flex;
+    position: relative;
+    left: 50%;
+    width: 90vw;
+    max-width: none;
+    margin-left: -45vw;
+    margin-right: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  .four-choice-layout .question-card-content {
+    width: 75%;
+    -ms-flex: 0 0 75%;
+    flex: 0 0 75%;
+    min-width: 0;
+    padding: 22px;
+  }
+  .four-choice-layout .feedback-panel {
+    display: block;
+    width: 25%;
+    -ms-flex: 0 0 25%;
+    flex: 0 0 25%;
+    min-width: 0;
+    margin: 0;
+    padding: 22px 16px;
+    border: 0;
+    border-left: 1px solid #d8d4c8;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .four-choice-layout .feedback-panel[hidden] { display: none; }
+  .four-choice-layout .feedback-panel.correct { border-top: 0; border-left: 6px solid #087f73; }
+  .four-choice-layout .feedback-panel.incorrect { border-top: 0; border-left: 6px solid #c95c4b; }
+  .four-choice-layout .feedback-heading { display: block; }
+  .four-choice-layout .feedback-section-heading {
+    display: -ms-flexbox;
+    display: flex;
+    -ms-flex-align: start;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+  .four-choice-layout .feedback-choice-icon {
+    display: -ms-inline-flexbox;
+    display: inline-flex;
+    -ms-flex-align: center;
+    align-items: center;
+    -ms-flex-pack: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    -ms-flex: 0 0 28px;
+    flex: 0 0 28px;
+    margin-right: 8px;
+    color: #ffffff;
+    background: #18312d;
+    border-radius: 50%;
+    font-family: Georgia, serif;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .four-choice-layout .feedback-section-heading h3 {
+    -ms-flex: 1 1 auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 3px 0 0;
+  }
+  .four-choice-layout .feedback-section { margin: 14px 0; padding: 12px; }
+  .four-choice-layout .feedback-law-reader .law-text { padding: 12px; font-size: 14px; line-height: 1.7; }
+  .four-choice-layout .feedback-panel > .button { width: 100%; }
+}
+
+@media all and (-ms-high-contrast: none) and (max-width: 720px),
+       (-ms-high-contrast: active) and (max-width: 720px) {
+  .four-choice-layout > .question-card { display: block; padding: 17px 10px; }
+  .four-choice-layout .question-card-content { width: auto; padding: 0; }
+  .four-choice-layout .feedback-panel {
+    width: auto;
+    padding: 22px 14px;
+    border-left: 0;
+    margin-top: 18px;
+  }
+  .four-choice-layout .feedback-panel.correct { border-top: 6px solid #087f73; }
+  .four-choice-layout .feedback-panel.incorrect { border-top: 6px solid #c95c4b; }
+  .four-choice-layout .feedback-panel[hidden] { display: none; }
+}
+
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+  .four-choice-session,
+  .true-false-session { padding-top: 30px; }
+  .four-choice-session .session-header,
+  .true-false-session .session-header { margin-bottom: 10px; }
+  .four-choice-session .session-header .eyebrow,
+  .true-false-session .session-header .eyebrow { margin-bottom: 4px; }
+  .four-choice-session .session-header h1,
+  .true-false-session .session-header h1 { line-height: 1.2; }
+  .four-choice-session .session-progress > span,
+  .true-false-session .session-progress > span { margin-bottom: 2px; }
+  .four-choice-card .reader-toolbar-note { display: none; }
+  .four-choice-card .reader-toolbar { margin: -8px 0 8px; padding-bottom: 10px; }
+  .four-choice-card .reader-toolbar-label { display: none; }
+  .four-choice-card .reader-toolbar .question-instruction {
+    display: block;
+    -ms-flex: 1 1 auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+  .four-choice-card .reader-toolbar .text-size-buttons {
+    -ms-flex: 0 0 auto;
+    flex: 0 0 auto;
+    margin-left: 12px;
+  }
+}
+
+@media all and (-ms-high-contrast: none) and (max-width: 720px),
+       (-ms-high-contrast: active) and (max-width: 720px) {
+  .four-choice-session,
+  .true-false-session { padding-top: 22px; }
+  .four-choice-session .session-header,
+  .true-false-session .session-header { margin-bottom: 8px; }
+}

@@ -300,9 +300,10 @@
       "#setupView .count-presets{margin-top:3px!important;}" +
       "#setupView .count-presets button{min-height:28px!important;padding-top:3px!important;padding-bottom:3px!important;}" +
       "#setupView .form-message,#setupView .start-note{margin-top:3px!important;margin-bottom:0!important;line-height:1.3!important;}" +
-      "#learnView>.session-header,#learnView>.question-card,#learnView>.feedback-panel{" +
-      "position:relative!important;left:50%!important;width:80vw!important;max-width:80vw!important;" +
-      "margin-left:-40vw!important;margin-right:0!important;transform:none!important;box-sizing:border-box!important;}" +
+       "#learnView>.session-header,#learnView>.question-card,#learnView>.feedback-panel{" +
+       "position:relative!important;left:50%!important;width:80vw!important;max-width:80vw!important;" +
+       "margin-left:-40vw!important;margin-right:0!important;transform:none!important;box-sizing:border-box!important;}" +
+       "#learnView.four-choice-layout>.question-card{width:90vw!important;max-width:90vw!important;margin-left:-45vw!important;}" +
       "#learnView>.session-header{display:-ms-flexbox!important;display:flex!important;-ms-flex-wrap:wrap!important;flex-wrap:wrap!important;-ms-flex-align:center!important;align-items:center!important;}" +
       "#learnView>.session-header>div:first-child{min-width:0!important;-ms-flex:1 1 180px!important;flex:1 1 180px!important;}" +
       "#learnView>.session-header .session-progress{min-width:220px!important;-ms-flex:1 1 280px!important;flex:1 1 280px!important;margin-left:16px!important;margin-right:16px!important;}" +
@@ -441,6 +442,5 @@
   wrapLocalDbParse();
   loadServerRows();
   installFocusButtonPositioning();
-  document.addEventListener("click", interceptChoiceClick, true);
-  document.addEventListener("click", interceptTrueFalseClick, true);
+  // 学習問題の回答結果は app.js のカード内フィードバックにまとめて表示する。
 }(this));

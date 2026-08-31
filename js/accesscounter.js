@@ -58,6 +58,25 @@
     head.appendChild(style);
   }
 
+  function loadQuestionMetaGuard() {
+    var head = document.getElementsByTagName("head")[0];
+    var script;
+
+    if (!head || document.getElementById("stiQuestionMetaGuardScript")) { return; }
+
+    try {
+      script = document.createElement("script");
+      script.id = "stiQuestionMetaGuardScript";
+      script.type = "text/javascript";
+      script.src = "js/question-meta-guard.js";
+      script.async = true;
+      script.onerror = function () {};
+      head.appendChild(script);
+    } catch (e) {
+      // Quiz protection failure must not affect the main application.
+    }
+  }
+
   function createDisplay() {
     var header = document.querySelector ? document.querySelector(".site-header") : null;
     var wrapper;
@@ -314,6 +333,7 @@
     started = true;
 
     try {
+      loadQuestionMetaGuard();
       addStyle();
       if (!createDisplay()) { return; }
       setDisconnected();

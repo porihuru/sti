@@ -26,11 +26,31 @@
     meta.setAttribute("aria-hidden", mode === "条文閲覧" ? "false" : "true");
   }
 
+  function loadSetupQuestionCount() {
+    var head = document.getElementsByTagName("head")[0];
+    var script;
+
+    if (!head || document.getElementById("stiSetupQuestionCountScript")) { return; }
+
+    try {
+      script = document.createElement("script");
+      script.id = "stiSetupQuestionCountScript";
+      script.type = "text/javascript";
+      script.src = "js/setup-question-count.js";
+      script.async = true;
+      script.onerror = function () {};
+      head.appendChild(script);
+    } catch (e) {
+      // Count display is optional and must never affect quiz operation.
+    }
+  }
+
   function init() {
     var label = document.getElementById("sessionModeLabel");
     var learnView = document.getElementById("learnView");
 
     updateVisibility();
+    loadSetupQuestionCount();
 
     if (root.MutationObserver && (label || learnView)) {
       observer = new root.MutationObserver(function () {

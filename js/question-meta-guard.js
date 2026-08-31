@@ -26,23 +26,31 @@
     meta.setAttribute("aria-hidden", mode === "条文閲覧" ? "false" : "true");
   }
 
-  function loadSetupQuestionCount() {
+  function loadOptionalScript(id, src) {
     var head = document.getElementsByTagName("head")[0];
     var script;
 
-    if (!head || document.getElementById("stiSetupQuestionCountScript")) { return; }
+    if (!head || document.getElementById(id)) { return; }
 
     try {
       script = document.createElement("script");
-      script.id = "stiSetupQuestionCountScript";
+      script.id = id;
       script.type = "text/javascript";
-      script.src = "js/setup-question-count.js";
+      script.src = src;
       script.async = true;
       script.onerror = function () {};
       head.appendChild(script);
     } catch (e) {
-      // Count display is optional and must never affect quiz operation.
+      // Optional UI helpers must never affect the main quiz application.
     }
+  }
+
+  function loadSetupQuestionCount() {
+    loadOptionalScript("stiSetupQuestionCountScript", "js/setup-question-count.js");
+  }
+
+  function loadFourChoiceFeedbackFix() {
+    loadOptionalScript("stiFourChoiceFeedbackFixScript", "js/four-choice-feedback-fix.js");
   }
 
   function init() {
@@ -51,6 +59,7 @@
 
     updateVisibility();
     loadSetupQuestionCount();
+    loadFourChoiceFeedbackFix();
 
     if (root.MutationObserver && (label || learnView)) {
       observer = new root.MutationObserver(function () {

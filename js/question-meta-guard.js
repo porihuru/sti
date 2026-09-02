@@ -58,7 +58,7 @@
   }
 
   function loadLearnLayoutFix() {
-    loadOptionalScript("stiLearnLayoutFixScript", "js/learn-layout-fix.js?v=3");
+    loadOptionalScript("stiLearnLayoutFixScript", "js/learn-layout-fix.js?v=4");
   }
 
   function init() {

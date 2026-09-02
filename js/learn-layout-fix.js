@@ -1,5 +1,5 @@
 // Keep the learning screen inside the visible browser area.
-// Prevent horizontal overflow and reset accidental horizontal scrolling.
+// Overrides legacy viewport-centering rules, including !important declarations.
 // ES5 / IE11 compatible.
 (function (root) {
   "use strict";
@@ -27,31 +27,37 @@
     css =
       "html,body{max-width:100%!important;overflow-x:hidden!important;}" +
       "html body .app-shell{max-width:100%!important;overflow-x:hidden!important;}" +
-      "html body #learnView{position:relative!important;left:auto!important;right:auto!important;" +
+      "html body main{box-sizing:border-box!important;}" +
+      "html body main #learnView{position:relative!important;left:auto!important;right:auto!important;" +
       "width:100%!important;max-width:100%!important;margin-left:0!important;margin-right:0!important;" +
-      "padding-left:8px!important;padding-right:8px!important;transform:none!important;box-sizing:border-box!important;}" +
-      "html body #learnView>.session-header," +
-      "html body #learnView>.question-card," +
-      "html body #learnView>.feedback-panel{" +
+      "padding-left:24px!important;padding-right:24px!important;transform:none!important;box-sizing:border-box!important;}" +
+      "html body main #learnView>.session-header," +
+      "html body main #learnView>.question-card," +
+      "html body main #learnView>.feedback-panel{" +
       "position:relative!important;left:auto!important;right:auto!important;" +
       "width:100%!important;max-width:100%!important;" +
       "margin-left:0!important;margin-right:0!important;" +
       "transform:none!important;box-sizing:border-box!important;}" +
-      "html body #learnView.four-choice-layout>.question-card," +
-      "html body #learnView.four-choice-session>.question-card," +
-      "html body #learnView>.question-card.four-choice-card{" +
+      "html body main #learnView.four-choice-layout>.question-card," +
+      "html body main #learnView.four-choice-session>.question-card," +
+      "html body main #learnView>.question-card.four-choice-card{" +
       "position:relative!important;left:auto!important;right:auto!important;" +
       "width:100%!important;max-width:100%!important;" +
       "margin-left:0!important;margin-right:0!important;transform:none!important;}" +
-      "html body #learnView #questionArea," +
-      "html body #learnView .choice-list," +
-      "html body #learnView .choice-item," +
-      "html body #learnView .choice-button{width:100%!important;max-width:100%!important;box-sizing:border-box!important;}" +
-      "html body #learnView .choice-text{min-width:0!important;max-width:100%!important;overflow-wrap:break-word!important;word-wrap:break-word!important;}" +
+      "html body main #learnView.four-choice-layout .question-card-content{" +
+      "width:75%!important;max-width:75%!important;box-sizing:border-box!important;}" +
+      "html body main #learnView.four-choice-layout .feedback-panel{" +
+      "width:25%!important;max-width:25%!important;box-sizing:border-box!important;}" +
+      "html body main #learnView #questionArea," +
+      "html body main #learnView .choice-list," +
+      "html body main #learnView .choice-item," +
+      "html body main #learnView .choice-button{width:100%!important;max-width:100%!important;box-sizing:border-box!important;}" +
+      "html body main #learnView .choice-text{min-width:0!important;max-width:100%!important;word-wrap:break-word!important;}" +
       "@media (max-width:760px){" +
-      "html body #learnView{padding-left:6px!important;padding-right:6px!important;}" +
-      "html body #learnView>.question-card{padding-left:10px!important;padding-right:10px!important;}" +
-      "html body #learnView>.session-header{padding-left:2px!important;padding-right:2px!important;}" +
+      "html body main #learnView{padding-left:14px!important;padding-right:14px!important;}" +
+      "html body main #learnView.four-choice-layout>.question-card{display:block!important;}" +
+      "html body main #learnView.four-choice-layout .question-card-content," +
+      "html body main #learnView.four-choice-layout .feedback-panel{width:100%!important;max-width:100%!important;}" +
       "}";
 
     if (style.styleSheet) {
@@ -60,6 +66,32 @@
       while (style.firstChild) { style.removeChild(style.firstChild); }
       style.appendChild(document.createTextNode(css));
     }
+  }
+
+  function setImportant(node, property, value) {
+    if (!node || !node.style) { return; }
+    try {
+      if (node.style.setProperty) {
+        node.style.setProperty(property, value, "important");
+      } else {
+        node.style.cssText += ";" + property + ":" + value + " !important";
+      }
+    } catch (e) {
+      // Layout correction must never affect quiz operation.
+    }
+  }
+
+  function forceInside(node) {
+    if (!node) { return; }
+    setImportant(node, "position", "relative");
+    setImportant(node, "left", "auto");
+    setImportant(node, "right", "auto");
+    setImportant(node, "width", "100%");
+    setImportant(node, "max-width", "100%");
+    setImportant(node, "margin-left", "0");
+    setImportant(node, "margin-right", "0");
+    setImportant(node, "transform", "none");
+    setImportant(node, "box-sizing", "border-box");
   }
 
   function currentScrollTop() {
@@ -84,11 +116,45 @@
     return learn && (" " + learn.className + " ").indexOf(" active ") >= 0;
   }
 
+  function enforceGeometry() {
+    var learn = document.getElementById("learnView");
+    var header;
+    var card;
+    var panel;
+
+    if (!learn || !learnIsActive()) { return; }
+
+    setImportant(learn, "position", "relative");
+    setImportant(learn, "left", "auto");
+    setImportant(learn, "right", "auto");
+    setImportant(learn, "width", "100%");
+    setImportant(learn, "max-width", "100%");
+    setImportant(learn, "margin-left", "0");
+    setImportant(learn, "margin-right", "0");
+    setImportant(learn, "padding-left", "24px");
+    setImportant(learn, "padding-right", "24px");
+    setImportant(learn, "transform", "none");
+    setImportant(learn, "box-sizing", "border-box");
+
+    header = learn.querySelector ? learn.querySelector(".session-header") : null;
+    card = learn.querySelector ? learn.querySelector(".question-card") : null;
+    panel = learn.querySelector ? learn.querySelector(".feedback-panel") : null;
+    forceInside(header);
+    forceInside(card);
+
+    // In four-choice mode the feedback panel lives inside the question card.
+    // Do not force it to 100%, because its intended desktop width is 25%.
+    if (panel && panel.parentNode === learn) { forceInside(panel); }
+
+    resetHorizontalScroll();
+  }
+
   function correctWhenActive() {
     if (!learnIsActive()) { return; }
-    resetHorizontalScroll();
-    root.setTimeout(resetHorizontalScroll, 0);
-    root.setTimeout(resetHorizontalScroll, 80);
+    enforceGeometry();
+    root.setTimeout(enforceGeometry, 0);
+    root.setTimeout(enforceGeometry, 80);
+    root.setTimeout(enforceGeometry, 300);
   }
 
   function init() {
@@ -102,7 +168,12 @@
       observer = new root.MutationObserver(function () {
         correctWhenActive();
       });
-      observer.observe(learn, { attributes: true, attributeFilter: ["class"] });
+      observer.observe(learn, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+        attributeFilter: ["class", "hidden"]
+      });
     }
 
     if (root.addEventListener) {

@@ -57,6 +57,10 @@
     loadOptionalScript("stiCsvEditorPasswordScript", "js/csv-editor-password.js");
   }
 
+  function loadLearnLayoutFix() {
+    loadOptionalScript("stiLearnLayoutFixScript", "js/learn-layout-fix.js");
+  }
+
   function init() {
     var label = document.getElementById("sessionModeLabel");
     var learnView = document.getElementById("learnView");
@@ -65,6 +69,7 @@
     loadSetupQuestionCount();
     loadFourChoiceFeedbackFix();
     loadCsvEditorPassword();
+    loadLearnLayoutFix();
 
     if (root.MutationObserver && (label || learnView)) {
       observer = new root.MutationObserver(function () {

@@ -1,6 +1,6 @@
-// STI access counter
-// SharePoint access counter is intentionally isolated from the main STI application.
-// If SharePoint is unavailable, only "ACCESS 未接続" is shown.
+// STI access counter and encrypted session-start event collector.
+// SharePoint access is intentionally isolated from the main STI application.
+// If SharePoint is unavailable, only the optional counter is affected.
 // ES5 / XMLHttpRequest only for IE11 / Edge IE mode compatibility.
 (function (root) {
   "use strict";
@@ -8,8 +8,10 @@
   var document = root.document;
   var CONFIG_PATH = "config/accesscounter.txt";
   var started = false;
-  var countedThisPage = false;
   var valueElement = null;
+  var loadedConfig = null;
+  var loadingConfig = false;
+  var configWaiters = [];
 
   if (!document) { return; }
 
@@ -174,6 +176,10 @@
     }
   }
 
+  function parseJson(response) {
+    return JSON.parse(response.responseText || "{}");
+  }
+
   function escapeListTitle(title) {
     return String(title || "").replace(/'/g, "''");
   }
@@ -196,15 +202,15 @@
     return null;
   }
 
-  function readItems(apiRoot, listName, success, error) {
+  function readItems(apiRoot, listName, select, success, error) {
     var title = escapeListTitle(listName);
-    var url = apiRoot + "/web/lists/getbytitle('" + title + "')/items?$top=5000&$select=Id,Title,count";
+    var url = apiRoot + "/web/lists/getbytitle('" + title + "')/items?$top=5000&$select=" + select;
 
     xhr("GET", url, { "Accept": "application/json;odata=verbose" }, null, function (req) {
       var data;
       var items;
       try {
-        data = JSON.parse(req.responseText);
+        data = parseJson(req);
         items = data && data.d && data.d.results ? data.d.results : [];
         success(items);
       } catch (e) {
@@ -220,7 +226,7 @@
     xhr("GET", url, { "Accept": "application/json;odata=verbose" }, null, function (req) {
       var data;
       try {
-        data = JSON.parse(req.responseText);
+        data = parseJson(req);
         if (!data || !data.d || !data.d.ListItemEntityTypeFullName) {
           error(req);
           return;
@@ -237,7 +243,7 @@
       var data;
       var info;
       try {
-        data = JSON.parse(req.responseText);
+        data = parseJson(req);
         info = data && data.d ? data.d.GetContextWebInformation : null;
         if (!info || !info.FormDigestValue) {
           error(req);
@@ -250,62 +256,195 @@
     }, error);
   }
 
-  function writeCounter(apiRoot, listName, total, next, success, error) {
+  function writeItem(apiRoot, listName, body, success, error) {
     getEntityType(apiRoot, listName, function (entityType) {
       getDigest(apiRoot, function (digest) {
         var title = escapeListTitle(listName);
         var url;
-        var body;
         var headers = {
           "Accept": "application/json;odata=verbose",
           "Content-Type": "application/json;odata=verbose",
           "X-RequestDigest": digest
         };
 
-        if (total) {
-          url = apiRoot + "/web/lists/getbytitle('" + title + "')/items(" + total.Id + ")";
-          headers["X-HTTP-Method"] = "MERGE";
-          headers["IF-MATCH"] = "*";
-          body = JSON.stringify({ "__metadata": { "type": entityType }, "count": next });
-        } else {
-          url = apiRoot + "/web/lists/getbytitle('" + title + "')/items";
-          body = JSON.stringify({ "__metadata": { "type": entityType }, "Title": "total", "count": next });
-        }
+        url = apiRoot + "/web/lists/getbytitle('" + title + "')/items";
+        body.__metadata = { "type": entityType };
 
-        xhr("POST", url, headers, body, success, error);
+        xhr("POST", url, headers, JSON.stringify(body), success, error);
       }, error);
     }, error);
   }
 
-  function runCounter(config) {
-    var webRoot = normalizeRoot(config.WEB_ROOT);
-    var listName = trim(config.COUNTER_LIST || "stiaccesscounter");
-    var apiRoot;
+  function readCurrentUser(apiRoot, success, error) {
+    xhr("GET", apiRoot + "/web/currentuser?$select=Id,LoginName,Title", {
+      "Accept": "application/json;odata=verbose"
+    }, null, function (req) {
+      var data;
+      var user;
+      try {
+        data = parseJson(req);
+        user = data && data.d ? data.d : null;
+        if (!user || !user.Id) { error(req); return; }
+        success(user);
+      } catch (e) {
+        error(req);
+      }
+    }, error);
+  }
 
-    if (!webRoot || !listName) {
-      setDisconnected();
-      return;
-    }
-
-    apiRoot = webRoot + "/_api";
-
-    readItems(apiRoot, listName, function (items) {
+  function readTotal(apiRoot, listName, success, error) {
+    readItems(apiRoot, listName, "Id,Title,count", function (items) {
       var total = findTotal(items);
       var current = total ? parseInt(total.count, 10) : 0;
-      var next;
-
       if (isNaN(current) || current < 0) { current = 0; }
+      success(total, current);
+    }, error);
+  }
 
-      if (countedThisPage) {
-        setValue(formatNumber(current));
+  function incrementTotal(config, success, error) {
+    var apiRoot = normalizeRoot(config.WEB_ROOT) + "/_api";
+    var listName = trim(config.COUNTER_LIST || "stiaccesscounter");
+    if (!normalizeRoot(config.WEB_ROOT) || !listName) { error(); return; }
+
+    readTotal(apiRoot, listName, function (total, current) {
+      var body;
+      var title = escapeListTitle(listName);
+      var next = current + 1;
+
+      if (total) {
+        var url = apiRoot + "/web/lists/getbytitle('" + title + "')/items(" + total.Id + ")";
+        var headers = {
+          "Accept": "application/json;odata=verbose",
+          "Content-Type": "application/json;odata=verbose",
+          "X-HTTP-Method": "MERGE",
+          "IF-MATCH": "*"
+        };
+        getEntityType(apiRoot, listName, function (entityType) {
+          getDigest(apiRoot, function (digest) {
+            headers["X-RequestDigest"] = digest;
+            body = JSON.stringify({ "__metadata": { "type": entityType }, "count": next });
+            xhr("POST", url, headers, body, function () { success(next); }, error);
+          }, error);
+        }, error);
         return;
       }
 
-      countedThisPage = true;
-      next = current + 1;
+      writeItem(apiRoot, listName, { "Title": "total", "count": next }, function () {
+        success(next);
+      }, error);
+    }, error);
+  }
 
-      writeCounter(apiRoot, listName, total, next, function () {
-        setValue(formatNumber(next));
+  function getSubtle() {
+    var crypto = root.crypto || root.msCrypto;
+    return crypto && crypto.subtle ? crypto.subtle : null;
+  }
+
+  function operationPromise(operation) {
+    if (!operation) { return root.Promise.reject(new Error("暗号処理を開始できません。")); }
+    if (typeof operation.then === "function") { return operation; }
+    return new root.Promise(function (resolve, reject) {
+      operation.oncomplete = function () { resolve(operation.result); };
+      operation.onerror = function () { reject(new Error("暗号処理に失敗しました。")); };
+      operation.onabort = function () { reject(new Error("暗号処理が中断されました。")); };
+    });
+  }
+
+  function base64ToBytes(value) {
+    var binary = root.atob(String(value || "").replace(/\s/g, ""));
+    var bytes = new Uint8Array(binary.length);
+    var i;
+    for (i = 0; i < binary.length; i += 1) { bytes[i] = binary.charCodeAt(i); }
+    return bytes;
+  }
+
+  function bytesToBase64(bytes) {
+    var binary = "";
+    var i;
+    for (i = 0; i < bytes.length; i += 1) { binary += String.fromCharCode(bytes[i]); }
+    return root.btoa(binary);
+  }
+
+  function utf8Bytes(value) {
+    var encoded = unescape(encodeURIComponent(value));
+    var bytes = new Uint8Array(encoded.length);
+    var i;
+    for (i = 0; i < encoded.length; i += 1) { bytes[i] = encoded.charCodeAt(i); }
+    return bytes;
+  }
+
+  function publicKeyText(value) {
+    return String(value || "")
+      .replace(/-----BEGIN PUBLIC KEY-----/g, "")
+      .replace(/-----END PUBLIC KEY-----/g, "")
+      .replace(/\s/g, "");
+  }
+
+  function encryptPayload(config, payload, success, error) {
+    var subtle = getSubtle();
+    var keyText = publicKeyText(config.ENCRYPTION_PUBLIC_KEY_B64);
+    var keyBytes;
+    var algorithm = { name: "RSA-OAEP", hash: { name: "SHA-1" } };
+
+    if (!subtle || !root.Promise || !keyText) { error(new Error("暗号化公開鍵またはWeb Crypto APIがありません。")); return; }
+
+    try {
+      keyBytes = base64ToBytes(keyText);
+      operationPromise(subtle.importKey("spki", keyBytes, algorithm, false, ["encrypt"]))
+        .then(function (key) {
+          return operationPromise(subtle.encrypt({ name: "RSA-OAEP" }, key, utf8Bytes(JSON.stringify(payload))));
+        })
+        .then(function (encrypted) {
+          success("STI-RSA-OAEP-SHA1-v1:" + bytesToBase64(new Uint8Array(encrypted)));
+        })
+        .catch(error);
+    } catch (e) {
+      error(e);
+    }
+  }
+
+  function makeEventKey() {
+    return "session-" + new Date().getTime() + "-" + Math.floor(Math.random() * 1000000000);
+  }
+
+  function writeSessionEvent(config, encrypted, success, error) {
+    var apiRoot = normalizeRoot(config.WEB_ROOT) + "/_api";
+    var listName = trim(config.USER_EVENT_LIST || "stiuseraccess");
+    var body;
+
+    if (!normalizeRoot(config.WEB_ROOT) || !listName) { error(); return; }
+    body = {
+      "Title": makeEventKey(),
+      "EncryptedPayload": encrypted,
+      "SchemaVersion": 1
+    };
+    writeItem(apiRoot, listName, body, success, error);
+  }
+
+  function recordSessionStart(config) {
+    var apiRoot = normalizeRoot(config.WEB_ROOT) + "/_api";
+    var payload;
+
+    if (!normalizeRoot(config.WEB_ROOT) || !trim(config.USER_EVENT_LIST) || !trim(config.ENCRYPTION_PUBLIC_KEY_B64)) {
+      return;
+    }
+
+    readCurrentUser(apiRoot, function (user) {
+      payload = {
+        "eventType": "session_start",
+        "userId": String(user.Id),
+        "lastAccessUtc": new Date().toISOString()
+      };
+      encryptPayload(config, payload, function (encrypted) {
+        writeSessionEvent(config, encrypted, function () {
+          incrementTotal(config, function (next) {
+            setValue(formatNumber(next));
+          }, function () {
+            // The encrypted event is already stored; only the display refresh failed.
+          });
+        }, function () {
+          setDisconnected();
+        });
       }, function () {
         setDisconnected();
       });
@@ -314,15 +453,36 @@
     });
   }
 
-  function loadConfig() {
+  function loadConfig(callback) {
+    var i;
+    if (loadedConfig) { callback(loadedConfig); return; }
+    configWaiters.push(callback);
+    if (loadingConfig) { return; }
+    loadingConfig = true;
     xhr("GET", CONFIG_PATH + "?v=1", null, null, function (req) {
       var config;
       try {
         config = parseConfig(req.responseText);
-        runCounter(config);
+        loadedConfig = config;
       } catch (e) {
-        setDisconnected();
+        loadedConfig = null;
       }
+      loadingConfig = false;
+      for (i = 0; i < configWaiters.length; i += 1) { configWaiters[i](loadedConfig); }
+      configWaiters = [];
+    }, function () {
+      loadingConfig = false;
+      for (i = 0; i < configWaiters.length; i += 1) { configWaiters[i](null); }
+      configWaiters = [];
+    });
+  }
+
+  function refreshDisplay(config) {
+    var webRoot = normalizeRoot(config.WEB_ROOT);
+    var listName = trim(config.COUNTER_LIST || "stiaccesscounter");
+    if (!webRoot || !listName) { setDisconnected(); return; }
+    readTotal(webRoot + "/_api", listName, function (total, current) {
+      setValue(formatNumber(current));
     }, function () {
       setDisconnected();
     });
@@ -337,11 +497,21 @@
       addStyle();
       if (!createDisplay()) { return; }
       setDisconnected();
-      loadConfig();
+      loadConfig(function (config) {
+        if (config) { refreshDisplay(config); }
+      });
     } catch (e) {
       setDisconnected();
     }
   }
+
+  root.STIAccessCounter = {
+    recordSessionStart: function () {
+      loadConfig(function (config) {
+        if (config) { recordSessionStart(config); }
+      });
+    }
+  };
 
   if (document.readyState === "loading") {
     if (root.addEventListener) {

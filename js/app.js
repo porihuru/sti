@@ -422,6 +422,9 @@
     };
     state.lastConfig = config;
     STIHistory.saveSettings(config);
+    if (window.STIAccessCounter && window.STIAccessCounter.recordSessionStart) {
+      try { window.STIAccessCounter.recordSessionStart(); } catch (ignore) {}
+    }
     showView("learnView");
     renderQuestion();
   }

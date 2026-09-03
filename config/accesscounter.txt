@@ -2,3 +2,8 @@
 # SharePoint site is the same location used by typ.
 WEB_ROOT=/na/NA/NAFin/fin_csm
 COUNTER_LIST=stiaccesscounter
+# One SharePoint item is appended for each started learning/browse session.
+USER_EVENT_LIST=stiuseraccess
+# Base64 SPKI public key (PEM is also accepted). Keep the matching private key
+# outside this repository so another application can decrypt the payloads.
+ENCRYPTION_PUBLIC_KEY_B64=

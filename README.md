@@ -123,9 +123,9 @@ Cookie容量を超えないよう、不得意問題は弱点度の高いもの�
 - `EncryptedPayload`: 複数行テキスト（リッチテキストなし）。SharePointの利用者ID、開始イベント、最終アクセス日時（UTC）を暗号化して保存します。利用者名が必要な別アプリは、復号した利用者IDをSharePoint／組織の利用者情報と照合してください。利用者別の開始回数は、別アプリが`eventType=session_start`の件数を集計して求めます。
 - `SchemaVersion`: 数値。`1`を設定します。
 
-暗号化は受信側のRSA公開鍵で行い、`config/accesscounter.txt` の `ENCRYPTION_PUBLIC_KEY_B64` にBase64形式のSPKI公開鍵（PEM形式も可）を設定します。秘密鍵はリポジトリやブラウザーへ配置せず、集計する別アプリだけで管理してください。別アプリは `STI-RSA-OAEP-SHA1-v1:` で始まる値をRSA-OAEP（SHA-1）の秘密鍵で復号できます。
+暗号化は共有鍵方式で行います。アプリ側の秘密鍵は `js/accesscounter.js` に `123456789` として設定しており、復号側も同じ鍵を使用してください。`EncryptedPayload` は `STI-AES-CBC-SHA256-v1:` に続くBase64値で、Base64を復号すると「16バイトのIV + AES-CBC暗号文」です。鍵はUTF-8の `123456789` をSHA-256でハッシュした32バイト値です。
 
-公開鍵が未設定、またはSharePointに接続できない場合、学習機能は停止せず、記録だけを行いません。
+Web Crypto APIが利用できない、またはSharePointに接続できない場合、学習機能は停止せず、記録だけを行いません。
 
 ## PDF保存
 

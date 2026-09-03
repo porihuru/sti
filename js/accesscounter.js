@@ -7,6 +7,8 @@
 
   var document = root.document;
   var CONFIG_PATH = "config/accesscounter.txt";
+  // The same shared secret must be used by the application that decrypts events.
+  var ENCRYPTION_SECRET = "123456789";
   var started = false;
   var valueElement = null;
   var loadedConfig = null;
@@ -350,14 +352,6 @@
     });
   }
 
-  function base64ToBytes(value) {
-    var binary = root.atob(String(value || "").replace(/\s/g, ""));
-    var bytes = new Uint8Array(binary.length);
-    var i;
-    for (i = 0; i < binary.length; i += 1) { bytes[i] = binary.charCodeAt(i); }
-    return bytes;
-  }
-
   function bytesToBase64(bytes) {
     var binary = "";
     var i;
@@ -373,29 +367,32 @@
     return bytes;
   }
 
-  function publicKeyText(value) {
-    return String(value || "")
-      .replace(/-----BEGIN PUBLIC KEY-----/g, "")
-      .replace(/-----END PUBLIC KEY-----/g, "")
-      .replace(/\s/g, "");
-  }
-
-  function encryptPayload(config, payload, success, error) {
+  function encryptPayload(payload, success, error) {
     var subtle = getSubtle();
-    var keyText = publicKeyText(config.ENCRYPTION_PUBLIC_KEY_B64);
-    var keyBytes;
-    var algorithm = { name: "RSA-OAEP", hash: { name: "SHA-1" } };
+    var secretBytes = utf8Bytes(ENCRYPTION_SECRET);
+    var crypto = root.crypto || root.msCrypto;
+    var iv = new Uint8Array(16);
+    var algorithm = { name: "AES-CBC" };
 
-    if (!subtle || !root.Promise || !keyText) { error(new Error("暗号化公開鍵またはWeb Crypto APIがありません。")); return; }
+    if (!subtle || !root.Promise || !crypto || !crypto.getRandomValues) {
+      error(new Error("共有鍵またはWeb Crypto APIがありません。"));
+      return;
+    }
 
     try {
-      keyBytes = base64ToBytes(keyText);
-      operationPromise(subtle.importKey("spki", keyBytes, algorithm, false, ["encrypt"]))
+      crypto.getRandomValues(iv);
+      operationPromise(subtle.digest("SHA-256", secretBytes))
+        .then(function (digest) {
+          return operationPromise(subtle.importKey("raw", digest, algorithm, false, ["encrypt"]));
+        })
         .then(function (key) {
-          return operationPromise(subtle.encrypt({ name: "RSA-OAEP" }, key, utf8Bytes(JSON.stringify(payload))));
+          return operationPromise(subtle.encrypt({ name: "AES-CBC", iv: iv }, key, utf8Bytes(JSON.stringify(payload))));
         })
         .then(function (encrypted) {
-          success("STI-RSA-OAEP-SHA1-v1:" + bytesToBase64(new Uint8Array(encrypted)));
+          var encryptedBytes = new Uint8Array(iv.length + encrypted.byteLength);
+          encryptedBytes.set(iv, 0);
+          encryptedBytes.set(new Uint8Array(encrypted), iv.length);
+          success("STI-AES-CBC-SHA256-v1:" + bytesToBase64(encryptedBytes));
         })
         .catch(error);
     } catch (e) {
@@ -425,7 +422,7 @@
     var apiRoot = normalizeRoot(config.WEB_ROOT) + "/_api";
     var payload;
 
-    if (!normalizeRoot(config.WEB_ROOT) || !trim(config.USER_EVENT_LIST) || !trim(config.ENCRYPTION_PUBLIC_KEY_B64)) {
+    if (!normalizeRoot(config.WEB_ROOT) || !trim(config.USER_EVENT_LIST)) {
       return;
     }
 
@@ -435,7 +432,7 @@
         "userId": String(user.Id),
         "lastAccessUtc": new Date().toISOString()
       };
-      encryptPayload(config, payload, function (encrypted) {
+      encryptPayload(payload, function (encrypted) {
         writeSessionEvent(config, encrypted, function () {
           incrementTotal(config, function (next) {
             setValue(formatNumber(next));

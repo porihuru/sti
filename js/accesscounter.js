@@ -1,7 +1,6 @@
 // STI access counter and encrypted per-user question-start summary collector.
 // SharePoint access is intentionally isolated from the main STI application.
-// If SharePoint is unavailable, only the optional counter/summary is affected.
-// ES5 / XMLHttpRequest only for IE11 / Edge IE mode compatibility.
+// ES5 / XMLHttpRequest only for IE11 / Edge 95 compatibility.
 (function (root) {
   "use strict";
 
@@ -20,6 +19,8 @@
   var learnWasActive = false;
   var totalQueue = [];
   var totalBusy = false;
+  var summaryQueue = [];
+  var summaryBusy = false;
 
   if (!document) { return; }
 
@@ -109,11 +110,7 @@
   function parseConfig(text) {
     var config = {};
     var lines = String(text || "").split(/\r?\n/);
-    var i;
-    var line;
-    var pos;
-    var key;
-    var value;
+    var i, line, pos, key, value;
     for (i = 0; i < lines.length; i += 1) {
       line = trim(lines[i]);
       if (!line || line.charAt(0) === "#") { continue; }
@@ -140,7 +137,7 @@
     try {
       req = new XMLHttpRequest();
       req.open(method, url, true);
-      req.timeout = 5000;
+      req.timeout = 7000;
       if (headers) {
         for (key in headers) {
           if (headers.hasOwnProperty(key)) { req.setRequestHeader(key, headers[key]); }
@@ -164,7 +161,7 @@
   }
 
   function parseJson(response) {
-    return JSON.parse(response.responseText || "{}");
+    return JSON.parse(response && response.responseText ? response.responseText : "{}");
   }
 
   function escapeListTitle(title) {
@@ -181,28 +178,6 @@
       rootPath = rootPath.substring(0, rootPath.length - 1);
     }
     return rootPath;
-  }
-
-  function findTotal(items) {
-    var i;
-    for (i = 0; i < items.length; i += 1) {
-      if (String(items[i].Title || "").toLowerCase() === "total") { return items[i]; }
-    }
-    return null;
-  }
-
-  function readItems(apiRoot, listName, select, success, error) {
-    var title = escapeListTitle(listName);
-    var url = apiRoot + "/web/lists/getbytitle('" + title + "')/items?$top=5000&$select=" + select;
-    xhr("GET", url, { "Accept": "application/json;odata=verbose" }, null, function (req) {
-      var data;
-      var items;
-      try {
-        data = parseJson(req);
-        items = data && data.d && data.d.results ? data.d.results : [];
-        success(items);
-      } catch (e) { error(req); }
-    }, error);
   }
 
   function getEntityType(apiRoot, listName, success, error) {
@@ -281,11 +256,20 @@
   }
 
   function readTotal(apiRoot, listName, success, error) {
-    readItems(apiRoot, listName, "Id,Title,count", function (items) {
-      var total = findTotal(items);
-      var current = total ? parseInt(total.count, 10) : 0;
-      if (isNaN(current) || current < 0) { current = 0; }
-      success(total, current);
+    var title = escapeListTitle(listName);
+    var url = apiRoot + "/web/lists/getbytitle('" + title + "')/items?$top=50&$select=Id,Title,count";
+    xhr("GET", url, { "Accept": "application/json;odata=verbose" }, null, function (req) {
+      var data, items, total = null, i, current;
+      try {
+        data = parseJson(req);
+        items = data && data.d && data.d.results ? data.d.results : [];
+        for (i = 0; i < items.length; i += 1) {
+          if (String(items[i].Title || "").toLowerCase() === "total") { total = items[i]; break; }
+        }
+        current = total ? parseInt(total.count, 10) : 0;
+        if (isNaN(current) || current < 0) { current = 0; }
+        success(total, current);
+      } catch (e) { error(req); }
     }, error);
   }
 
@@ -297,14 +281,10 @@
     readTotal(apiRoot, listName, function (total, current) {
       var next = current + 1;
       if (total) {
-        updateItem(apiRoot, listName, total.Id, { "count": next }, function () {
-          success(next);
-        }, error);
+        updateItem(apiRoot, listName, total.Id, { "count": next }, function () { success(next); }, error);
         return;
       }
-      writeItem(apiRoot, listName, { "Title": "total", "count": next }, function () {
-        success(next);
-      }, error);
+      writeItem(apiRoot, listName, { "Title": "total", "count": next }, function () { success(next); }, error);
     }, error);
   }
 
@@ -331,7 +311,7 @@
   }
 
   function base64ToBytes(value) {
-    var binary = root.atob(value);
+    var binary = root.atob(String(value || "").replace(/\s/g, ""));
     var bytes = new Uint8Array(binary.length);
     var i;
     for (i = 0; i < binary.length; i += 1) { bytes[i] = binary.charCodeAt(i); }
@@ -340,8 +320,7 @@
 
   function bytesToHex(bytes) {
     var result = "";
-    var i;
-    var part;
+    var i, part;
     for (i = 0; i < bytes.length; i += 1) {
       part = bytes[i].toString(16);
       if (part.length < 2) { part = "0" + part; }
@@ -351,7 +330,7 @@
   }
 
   function utf8Bytes(value) {
-    var encoded = unescape(encodeURIComponent(value));
+    var encoded = unescape(encodeURIComponent(String(value)));
     var bytes = new Uint8Array(encoded.length);
     var i;
     for (i = 0; i < encoded.length; i += 1) { bytes[i] = encoded.charCodeAt(i); }
@@ -380,55 +359,77 @@
     var subtle = getSubtle();
     var crypto = root.crypto || root.msCrypto;
     var iv = new Uint8Array(16);
-
     if (!subtle || !root.Promise || !crypto || !crypto.getRandomValues) {
       error(new Error("共有鍵またはWeb Crypto APIがありません。"));
       return;
     }
-
     try {
       crypto.getRandomValues(iv);
       deriveEncryptionKey(function (key) {
-        operationPromise(subtle.encrypt(
-          { name: "AES-CBC", iv: iv },
-          key,
-          utf8Bytes(JSON.stringify(payload))
-        )).then(function (encrypted) {
-          var encryptedBytes = new Uint8Array(iv.length + encrypted.byteLength);
-          encryptedBytes.set(iv, 0);
-          encryptedBytes.set(new Uint8Array(encrypted), iv.length);
-          success(PAYLOAD_PREFIX + bytesToBase64(encryptedBytes));
-        }).catch(error);
+        operationPromise(subtle.encrypt({ name: "AES-CBC", iv: iv }, key, utf8Bytes(JSON.stringify(payload))))
+          .then(function (encrypted) {
+            var encryptedBytes = new Uint8Array(iv.length + encrypted.byteLength);
+            encryptedBytes.set(iv, 0);
+            encryptedBytes.set(new Uint8Array(encrypted), iv.length);
+            success(PAYLOAD_PREFIX + bytesToBase64(encryptedBytes));
+          })
+          .catch(error);
       }, error);
     } catch (e) { error(e); }
   }
 
+  function htmlToText(value) {
+    var raw = String(value === undefined || value === null ? "" : value);
+    var holder;
+    raw = raw.replace(/^\uFEFF/, "");
+    raw = raw.replace(/[\u200B\u200C\u200D\u2060]/g, "");
+    raw = raw.replace(/[\u2010\u2011\u2012\u2013\u2014\u2212\uFF0D]/g, "-");
+    raw = raw.replace(/\uFF1A/g, ":");
+    try {
+      holder = document.createElement("div");
+      holder.innerHTML = raw;
+      raw = holder.textContent !== undefined ? holder.textContent : holder.innerText;
+    } catch (e) {
+      raw = raw.replace(/<[^>]*>/g, " ");
+      raw = raw.replace(/&nbsp;/gi, " ");
+      raw = raw.replace(/&amp;/gi, "&");
+    }
+    return String(raw || "");
+  }
+
+  function extractEncryptedBase64(encrypted) {
+    var text = htmlToText(encrypted);
+    var compact = text.replace(/[\s\u00A0\u3000]+/g, "");
+    var index = compact.indexOf(PAYLOAD_PREFIX);
+    var tail;
+    var match;
+    if (index < 0) { throw new Error("暗号形式が一致しません。"); }
+    tail = compact.substring(index + PAYLOAD_PREFIX.length);
+    match = /^([A-Za-z0-9+\/=]+)/.exec(tail);
+    if (!match || !match[1]) { throw new Error("暗号本文がありません。"); }
+    return match[1];
+  }
+
   function decryptPayload(encrypted, success, error) {
     var subtle = getSubtle();
-    var encoded = String(encrypted || "");
-    var raw;
-    var iv;
-    var ciphertext;
-
-    if (encoded.indexOf(PAYLOAD_PREFIX) !== 0) {
-      error(new Error("暗号形式が一致しません。"));
-      return;
-    }
+    var raw, iv, ciphertext;
     try {
-      raw = base64ToBytes(encoded.substring(PAYLOAD_PREFIX.length));
-      if (raw.length <= 16) { error(new Error("暗号データが短すぎます。")); return; }
-      iv = raw.subarray(0, 16);
-      ciphertext = raw.subarray(16);
+      raw = base64ToBytes(extractEncryptedBase64(encrypted));
+      if (raw.length <= 16 || (raw.length - 16) % 16 !== 0) {
+        error(new Error("暗号データ長が不正です。"));
+        return;
+      }
+      iv = new Uint8Array(16);
+      iv.set(raw.subarray(0, 16));
+      ciphertext = new Uint8Array(raw.length - 16);
+      ciphertext.set(raw.subarray(16));
       deriveEncryptionKey(function (key) {
-        operationPromise(subtle.decrypt(
-          { name: "AES-CBC", iv: iv },
-          key,
-          ciphertext
-        )).then(function (plain) {
-          try {
-            success(JSON.parse(utf8String(new Uint8Array(plain))));
-          } catch (e) { error(e); }
-        }).catch(error);
+        operationPromise(subtle.decrypt({ name: "AES-CBC", iv: iv }, key, ciphertext.buffer))
+          .then(function (plain) {
+            try { success(JSON.parse(utf8String(new Uint8Array(plain)))); }
+            catch (e) { error(e); }
+          })
+          .catch(error);
       }, error);
     } catch (e2) { error(e2); }
   }
@@ -438,26 +439,46 @@
     var source = "sti-user:" + ENCRYPTION_SECRET + ":" + String(userId);
     if (!subtle || !root.Promise) { error(new Error("Web Crypto APIがありません。")); return; }
     operationPromise(subtle.digest("SHA-256", utf8Bytes(source)))
-      .then(function (digest) {
-        success("user-" + bytesToHex(new Uint8Array(digest)));
-      })
+      .then(function (digest) { success("user-" + bytesToHex(new Uint8Array(digest))); })
       .catch(error);
+  }
+
+  function findSummaryByTitle(items, userKey) {
+    var i;
+    for (i = 0; i < items.length; i += 1) {
+      if (String(items[i].Title || "") === userKey) { return items[i]; }
+    }
+    return null;
   }
 
   function readUserSummaryItem(apiRoot, listName, userKey, success, error) {
     var title = escapeListTitle(listName);
-    var key = escapeODataValue(userKey);
+    var filterText = "Title eq '" + escapeODataValue(userKey) + "'";
     var url = apiRoot + "/web/lists/getbytitle('" + title + "')/items" +
-      "?$top=2&$filter=Title%20eq%20'" + encodeURIComponent(key).replace(/%27/g, "''") + "'" +
-      "&$select=Id,Title,EncryptedPayload,SchemaVersion";
+      "?$top=2&$select=Id,Title,EncryptedPayload,SchemaVersion&$filter=" + encodeURIComponent(filterText);
 
     xhr("GET", url, { "Accept": "application/json;odata=verbose" }, null, function (req) {
-      var data;
-      var items;
+      var data, items;
       try {
         data = parseJson(req);
         items = data && data.d && data.d.results ? data.d.results : [];
-        success(items.length ? items[0] : null);
+        if (items.length) { success(items[0]); return; }
+        readUserSummaryFallback(apiRoot, listName, userKey, success, error);
+      } catch (e) { readUserSummaryFallback(apiRoot, listName, userKey, success, error); }
+    }, function () {
+      readUserSummaryFallback(apiRoot, listName, userKey, success, error);
+    });
+  }
+
+  function readUserSummaryFallback(apiRoot, listName, userKey, success, error) {
+    var title = escapeListTitle(listName);
+    var url = apiRoot + "/web/lists/getbytitle('" + title + "')/items?$top=5000&$select=Id,Title,EncryptedPayload,SchemaVersion";
+    xhr("GET", url, { "Accept": "application/json;odata=verbose" }, null, function (req) {
+      var data, items;
+      try {
+        data = parseJson(req);
+        items = data && data.d && data.d.results ? data.d.results : [];
+        success(findSummaryByTitle(items, userKey));
       } catch (e) { error(req); }
     }, error);
   }
@@ -480,9 +501,7 @@
     try {
       selected = document.querySelector ? document.querySelector('input[name="mode"]:checked') : null;
       return selected ? String(selected.value || "") : "";
-    } catch (e) {
-      return "";
-    }
+    } catch (e) { return ""; }
   }
 
   function runNextTotalIncrement() {
@@ -522,52 +541,29 @@
     homeWasActive = isViewActive(home);
     learnWasActive = isViewActive(learn);
 
-    if (homeWasActive || learnWasActive) {
-      incrementTotalOnly(config);
-    } else {
-      refreshDisplay(config);
-    }
+    if (homeWasActive || learnWasActive) { incrementTotalOnly(config); }
+    else { refreshDisplay(config); }
 
     if (root.MutationObserver && !viewObserver) {
       viewObserver = new root.MutationObserver(function () {
         var homeActive = isViewActive(home);
         var learnActive = isViewActive(learn);
-
-        if ((homeActive && !homeWasActive) || (learnActive && !learnWasActive)) {
-          incrementTotalOnly(config);
-        }
-
+        if ((homeActive && !homeWasActive) || (learnActive && !learnWasActive)) { incrementTotalOnly(config); }
         homeWasActive = homeActive;
         learnWasActive = learnActive;
       });
-
-      if (home) {
-        viewObserver.observe(home, {
-          attributes: true,
-          attributeFilter: ["class"]
-        });
-      }
-      if (learn) {
-        viewObserver.observe(learn, {
-          attributes: true,
-          attributeFilter: ["class"]
-        });
-      }
+      if (home) { viewObserver.observe(home, { attributes: true, attributeFilter: ["class"] }); }
+      if (learn) { viewObserver.observe(learn, { attributes: true, attributeFilter: ["class"] }); }
     }
   }
 
-  function recordQuestionStart(config, mode) {
+  function processQuestionStart(config, mode, done) {
     var webRoot = normalizeRoot(config.WEB_ROOT);
     var apiRoot = webRoot + "/_api";
     var listName = trim(config.USER_EVENT_LIST || "stiuseraccess");
 
-    if (!webRoot) { return; }
-    if (mode !== "browse" && mode !== "fourCorrect" && mode !== "fourWrong" && mode !== "trueFalse") { return; }
-
-    // Total ACCESS is counted from actual home/learn view transitions.
-    // This prevents missed or duplicate total counts caused by async helper timing.
-    if (mode === "browse") { return; }
-    if (!listName) { return; }
+    if (!webRoot || !listName || mode === "browse") { done(); return; }
+    if (mode !== "fourCorrect" && mode !== "fourWrong" && mode !== "trueFalse") { done(); return; }
 
     readCurrentUser(apiRoot, function (user) {
       makeUserKey(user.Id, function (userKey) {
@@ -580,10 +576,8 @@
               "lastQuestionStartUtc": new Date().toISOString()
             };
             encryptPayload(payload, function (encrypted) {
-              saveUserSummary(apiRoot, listName, item, userKey, encrypted, function () {
-                // Encrypted per-user summary saved independently from total ACCESS.
-              }, function () {});
-            }, function () {});
+              saveUserSummary(apiRoot, listName, item, userKey, encrypted, function () { done(); }, function () { done(); });
+            }, function () { done(); });
           }
 
           if (!item) {
@@ -591,23 +585,42 @@
             return;
           }
 
-          if (parseInt(item.SchemaVersion, 10) !== SUMMARY_SCHEMA_VERSION) {
-            return;
-          }
+          if (parseInt(item.SchemaVersion, 10) !== SUMMARY_SCHEMA_VERSION) { done(); return; }
 
           decryptPayload(item.EncryptedPayload, function (payload) {
             var count;
-            if (!payload || String(payload.userId) !== String(user.Id) ||
-                payload.eventType !== "question_start_summary") {
+            if (!payload || String(payload.userId) !== String(user.Id) || payload.eventType !== "question_start_summary") {
+              done();
               return;
             }
             count = parseInt(payload.questionStartCount, 10);
             if (isNaN(count) || count < 0) { count = 0; }
             saveWithCount(count);
-          }, function () {});
-        }, function () {});
-      }, function () {});
-    }, function () {});
+          }, function () {
+            // Never overwrite an unreadable existing summary with count=1.
+            done();
+          });
+        }, function () { done(); });
+      }, function () { done(); });
+    }, function () { done(); });
+  }
+
+  function runNextSummary() {
+    var job;
+    if (summaryBusy || !summaryQueue.length) { return; }
+    summaryBusy = true;
+    job = summaryQueue.shift();
+    processQuestionStart(job.config, job.mode, function () {
+      summaryBusy = false;
+      runNextSummary();
+    });
+  }
+
+  function recordQuestionStart(config, mode) {
+    if (mode === "browse") { return; }
+    if (mode !== "fourCorrect" && mode !== "fourWrong" && mode !== "trueFalse") { return; }
+    summaryQueue.push({ config: config, mode: mode });
+    runNextSummary();
   }
 
   function loadConfig(callback) {
@@ -616,12 +629,9 @@
     configWaiters.push(callback);
     if (loadingConfig) { return; }
     loadingConfig = true;
-    xhr("GET", CONFIG_PATH + "?v=2", null, null, function (req) {
-      var config;
-      try {
-        config = parseConfig(req.responseText);
-        loadedConfig = config;
-      } catch (e) { loadedConfig = null; }
+    xhr("GET", CONFIG_PATH + "?v=3", null, null, function (req) {
+      try { loadedConfig = parseConfig(req.responseText); }
+      catch (e) { loadedConfig = null; }
       loadingConfig = false;
       for (i = 0; i < configWaiters.length; i += 1) { configWaiters[i](loadedConfig); }
       configWaiters = [];

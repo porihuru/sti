@@ -2,7 +2,7 @@
 # SharePoint site is the same location used by typ.
 WEB_ROOT=/na/NA/NAFin/fin_csm
 COUNTER_LIST=stiaccesscounter
-# One SharePoint item is appended for each started learning/browse session.
+# Encrypted question-start summary. One SharePoint item per user (SchemaVersion=2).
 USER_EVENT_LIST=stiuseraccess
 # Shared encryption secret is embedded in js/accesscounter.js.
 # The decrypting application must use the same secret: 123456789

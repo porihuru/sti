@@ -1,14 +1,15 @@
-// STI access counter and encrypted session-start event collector.
+// STI access counter and encrypted per-user question-start summary collector.
 // SharePoint access is intentionally isolated from the main STI application.
-// If SharePoint is unavailable, only the optional counter is affected.
+// If SharePoint is unavailable, only the optional counter/summary is affected.
 // ES5 / XMLHttpRequest only for IE11 / Edge IE mode compatibility.
 (function (root) {
   "use strict";
 
   var document = root.document;
   var CONFIG_PATH = "config/accesscounter.txt";
-  // The same shared secret must be used by the application that decrypts events.
   var ENCRYPTION_SECRET = "123456789";
+  var PAYLOAD_PREFIX = "STI-AES-CBC-SHA256-v1:";
+  var SUMMARY_SCHEMA_VERSION = 2;
   var started = false;
   var valueElement = null;
   var loadedConfig = null;
@@ -22,14 +23,10 @@
   }
 
   function setValue(value) {
-    if (valueElement) {
-      valueElement.innerText = String(value);
-    }
+    if (valueElement) { valueElement.innerText = String(value); }
   }
 
-  function setDisconnected() {
-    setValue("未接続");
-  }
+  function setDisconnected() { setValue("未接続"); }
 
   function formatNumber(value) {
     return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -39,7 +36,6 @@
     var head = document.getElementsByTagName("head")[0];
     var style;
     var css;
-
     if (!head || document.getElementById("stiAccessCounterStyle")) { return; }
 
     css =
@@ -54,20 +50,15 @@
     style = document.createElement("style");
     style.id = "stiAccessCounterStyle";
     style.type = "text/css";
-    if (style.styleSheet) {
-      style.styleSheet.cssText = css;
-    } else {
-      style.appendChild(document.createTextNode(css));
-    }
+    if (style.styleSheet) { style.styleSheet.cssText = css; }
+    else { style.appendChild(document.createTextNode(css)); }
     head.appendChild(style);
   }
 
   function loadQuestionMetaGuard() {
     var head = document.getElementsByTagName("head")[0];
     var script;
-
     if (!head || document.getElementById("stiQuestionMetaGuardScript")) { return; }
-
     try {
       script = document.createElement("script");
       script.id = "stiQuestionMetaGuardScript";
@@ -76,9 +67,7 @@
       script.async = true;
       script.onerror = function () {};
       head.appendChild(script);
-    } catch (e) {
-      // Quiz protection failure must not affect the main application.
-    }
+    } catch (e) {}
   }
 
   function createDisplay() {
@@ -86,7 +75,6 @@
     var wrapper;
     var label;
     var value;
-
     if (!header) { return false; }
 
     wrapper = document.getElementById("stiAccessCounter");
@@ -109,7 +97,6 @@
       wrapper.appendChild(value);
       header.appendChild(wrapper);
     }
-
     valueElement = document.getElementById("stiAccessCounterValue");
     return !!valueElement;
   }
@@ -122,7 +109,6 @@
     var pos;
     var key;
     var value;
-
     for (i = 0; i < lines.length; i += 1) {
       line = trim(lines[i]);
       if (!line || line.charAt(0) === "#") { continue; }
@@ -150,15 +136,11 @@
       req = new XMLHttpRequest();
       req.open(method, url, true);
       req.timeout = 5000;
-
       if (headers) {
         for (key in headers) {
-          if (headers.hasOwnProperty(key)) {
-            req.setRequestHeader(key, headers[key]);
-          }
+          if (headers.hasOwnProperty(key)) { req.setRequestHeader(key, headers[key]); }
         }
       }
-
       req.onreadystatechange = function () {
         var status;
         if (req.readyState !== 4 || finished) { return; }
@@ -173,9 +155,7 @@
       req.onerror = fail;
       req.ontimeout = fail;
       req.send(body || null);
-    } catch (e) {
-      fail();
-    }
+    } catch (e) { fail(); }
   }
 
   function parseJson(response) {
@@ -184,6 +164,10 @@
 
   function escapeListTitle(title) {
     return String(title || "").replace(/'/g, "''");
+  }
+
+  function escapeODataValue(value) {
+    return String(value || "").replace(/'/g, "''");
   }
 
   function normalizeRoot(webRoot) {
@@ -197,9 +181,7 @@
   function findTotal(items) {
     var i;
     for (i = 0; i < items.length; i += 1) {
-      if (String(items[i].Title || "").toLowerCase() === "total") {
-        return items[i];
-      }
+      if (String(items[i].Title || "").toLowerCase() === "total") { return items[i]; }
     }
     return null;
   }
@@ -207,7 +189,6 @@
   function readItems(apiRoot, listName, select, success, error) {
     var title = escapeListTitle(listName);
     var url = apiRoot + "/web/lists/getbytitle('" + title + "')/items?$top=5000&$select=" + select;
-
     xhr("GET", url, { "Accept": "application/json;odata=verbose" }, null, function (req) {
       var data;
       var items;
@@ -215,28 +196,20 @@
         data = parseJson(req);
         items = data && data.d && data.d.results ? data.d.results : [];
         success(items);
-      } catch (e) {
-        error(req);
-      }
+      } catch (e) { error(req); }
     }, error);
   }
 
   function getEntityType(apiRoot, listName, success, error) {
     var title = escapeListTitle(listName);
     var url = apiRoot + "/web/lists/getbytitle('" + title + "')?$select=ListItemEntityTypeFullName";
-
     xhr("GET", url, { "Accept": "application/json;odata=verbose" }, null, function (req) {
       var data;
       try {
         data = parseJson(req);
-        if (!data || !data.d || !data.d.ListItemEntityTypeFullName) {
-          error(req);
-          return;
-        }
+        if (!data || !data.d || !data.d.ListItemEntityTypeFullName) { error(req); return; }
         success(data.d.ListItemEntityTypeFullName);
-      } catch (e) {
-        error(req);
-      }
+      } catch (e) { error(req); }
     }, error);
   }
 
@@ -247,14 +220,9 @@
       try {
         data = parseJson(req);
         info = data && data.d ? data.d.GetContextWebInformation : null;
-        if (!info || !info.FormDigestValue) {
-          error(req);
-          return;
-        }
+        if (!info || !info.FormDigestValue) { error(req); return; }
         success(info.FormDigestValue);
-      } catch (e) {
-        error(req);
-      }
+      } catch (e) { error(req); }
     }, error);
   }
 
@@ -262,16 +230,31 @@
     getEntityType(apiRoot, listName, function (entityType) {
       getDigest(apiRoot, function (digest) {
         var title = escapeListTitle(listName);
-        var url;
+        var url = apiRoot + "/web/lists/getbytitle('" + title + "')/items";
         var headers = {
           "Accept": "application/json;odata=verbose",
           "Content-Type": "application/json;odata=verbose",
           "X-RequestDigest": digest
         };
-
-        url = apiRoot + "/web/lists/getbytitle('" + title + "')/items";
         body.__metadata = { "type": entityType };
+        xhr("POST", url, headers, JSON.stringify(body), success, error);
+      }, error);
+    }, error);
+  }
 
+  function updateItem(apiRoot, listName, itemId, body, success, error) {
+    getEntityType(apiRoot, listName, function (entityType) {
+      getDigest(apiRoot, function (digest) {
+        var title = escapeListTitle(listName);
+        var url = apiRoot + "/web/lists/getbytitle('" + title + "')/items(" + itemId + ")";
+        var headers = {
+          "Accept": "application/json;odata=verbose",
+          "Content-Type": "application/json;odata=verbose",
+          "X-RequestDigest": digest,
+          "X-HTTP-Method": "MERGE",
+          "IF-MATCH": "*"
+        };
+        body.__metadata = { "type": entityType };
         xhr("POST", url, headers, JSON.stringify(body), success, error);
       }, error);
     }, error);
@@ -288,9 +271,7 @@
         user = data && data.d ? data.d : null;
         if (!user || !user.Id) { error(req); return; }
         success(user);
-      } catch (e) {
-        error(req);
-      }
+      } catch (e) { error(req); }
     }, error);
   }
 
@@ -309,28 +290,13 @@
     if (!normalizeRoot(config.WEB_ROOT) || !listName) { error(); return; }
 
     readTotal(apiRoot, listName, function (total, current) {
-      var body;
-      var title = escapeListTitle(listName);
       var next = current + 1;
-
       if (total) {
-        var url = apiRoot + "/web/lists/getbytitle('" + title + "')/items(" + total.Id + ")";
-        var headers = {
-          "Accept": "application/json;odata=verbose",
-          "Content-Type": "application/json;odata=verbose",
-          "X-HTTP-Method": "MERGE",
-          "IF-MATCH": "*"
-        };
-        getEntityType(apiRoot, listName, function (entityType) {
-          getDigest(apiRoot, function (digest) {
-            headers["X-RequestDigest"] = digest;
-            body = JSON.stringify({ "__metadata": { "type": entityType }, "count": next });
-            xhr("POST", url, headers, body, function () { success(next); }, error);
-          }, error);
+        updateItem(apiRoot, listName, total.Id, { "count": next }, function () {
+          success(next);
         }, error);
         return;
       }
-
       writeItem(apiRoot, listName, { "Title": "total", "count": next }, function () {
         success(next);
       }, error);
@@ -359,6 +325,26 @@
     return root.btoa(binary);
   }
 
+  function base64ToBytes(value) {
+    var binary = root.atob(value);
+    var bytes = new Uint8Array(binary.length);
+    var i;
+    for (i = 0; i < binary.length; i += 1) { bytes[i] = binary.charCodeAt(i); }
+    return bytes;
+  }
+
+  function bytesToHex(bytes) {
+    var result = "";
+    var i;
+    var part;
+    for (i = 0; i < bytes.length; i += 1) {
+      part = bytes[i].toString(16);
+      if (part.length < 2) { part = "0" + part; }
+      result += part;
+    }
+    return result;
+  }
+
   function utf8Bytes(value) {
     var encoded = unescape(encodeURIComponent(value));
     var bytes = new Uint8Array(encoded.length);
@@ -367,12 +353,28 @@
     return bytes;
   }
 
+  function utf8String(bytes) {
+    var binary = "";
+    var i;
+    for (i = 0; i < bytes.length; i += 1) { binary += String.fromCharCode(bytes[i]); }
+    return decodeURIComponent(escape(binary));
+  }
+
+  function deriveEncryptionKey(success, error) {
+    var subtle = getSubtle();
+    if (!subtle || !root.Promise) { error(new Error("Web Crypto APIがありません。")); return; }
+    operationPromise(subtle.digest("SHA-256", utf8Bytes(ENCRYPTION_SECRET)))
+      .then(function (digest) {
+        return operationPromise(subtle.importKey("raw", digest, { name: "AES-CBC" }, false, ["encrypt", "decrypt"]));
+      })
+      .then(success)
+      .catch(error);
+  }
+
   function encryptPayload(payload, success, error) {
     var subtle = getSubtle();
-    var secretBytes = utf8Bytes(ENCRYPTION_SECRET);
     var crypto = root.crypto || root.msCrypto;
     var iv = new Uint8Array(16);
-    var algorithm = { name: "AES-CBC" };
 
     if (!subtle || !root.Promise || !crypto || !crypto.getRandomValues) {
       error(new Error("共有鍵またはWeb Crypto APIがありません。"));
@@ -381,73 +383,166 @@
 
     try {
       crypto.getRandomValues(iv);
-      operationPromise(subtle.digest("SHA-256", secretBytes))
-        .then(function (digest) {
-          return operationPromise(subtle.importKey("raw", digest, algorithm, false, ["encrypt"]));
-        })
-        .then(function (key) {
-          return operationPromise(subtle.encrypt({ name: "AES-CBC", iv: iv }, key, utf8Bytes(JSON.stringify(payload))));
-        })
-        .then(function (encrypted) {
+      deriveEncryptionKey(function (key) {
+        operationPromise(subtle.encrypt(
+          { name: "AES-CBC", iv: iv },
+          key,
+          utf8Bytes(JSON.stringify(payload))
+        )).then(function (encrypted) {
           var encryptedBytes = new Uint8Array(iv.length + encrypted.byteLength);
           encryptedBytes.set(iv, 0);
           encryptedBytes.set(new Uint8Array(encrypted), iv.length);
-          success("STI-AES-CBC-SHA256-v1:" + bytesToBase64(encryptedBytes));
-        })
-        .catch(error);
-    } catch (e) {
-      error(e);
+          success(PAYLOAD_PREFIX + bytesToBase64(encryptedBytes));
+        }).catch(error);
+      }, error);
+    } catch (e) { error(e); }
+  }
+
+  function decryptPayload(encrypted, success, error) {
+    var subtle = getSubtle();
+    var encoded = String(encrypted || "");
+    var raw;
+    var iv;
+    var ciphertext;
+
+    if (encoded.indexOf(PAYLOAD_PREFIX) !== 0) {
+      error(new Error("暗号形式が一致しません。"));
+      return;
     }
+    try {
+      raw = base64ToBytes(encoded.substring(PAYLOAD_PREFIX.length));
+      if (raw.length <= 16) { error(new Error("暗号データが短すぎます。")); return; }
+      iv = raw.subarray(0, 16);
+      ciphertext = raw.subarray(16);
+      deriveEncryptionKey(function (key) {
+        operationPromise(subtle.decrypt(
+          { name: "AES-CBC", iv: iv },
+          key,
+          ciphertext
+        )).then(function (plain) {
+          try {
+            success(JSON.parse(utf8String(new Uint8Array(plain))));
+          } catch (e) { error(e); }
+        }).catch(error);
+      }, error);
+    } catch (e2) { error(e2); }
   }
 
-  function makeEventKey() {
-    return "session-" + new Date().getTime() + "-" + Math.floor(Math.random() * 1000000000);
+  function makeUserKey(userId, success, error) {
+    var subtle = getSubtle();
+    var source = "sti-user:" + ENCRYPTION_SECRET + ":" + String(userId);
+    if (!subtle || !root.Promise) { error(new Error("Web Crypto APIがありません。")); return; }
+    operationPromise(subtle.digest("SHA-256", utf8Bytes(source)))
+      .then(function (digest) {
+        success("user-" + bytesToHex(new Uint8Array(digest)));
+      })
+      .catch(error);
   }
 
-  function writeSessionEvent(config, encrypted, success, error) {
-    var apiRoot = normalizeRoot(config.WEB_ROOT) + "/_api";
-    var listName = trim(config.USER_EVENT_LIST || "stiuseraccess");
-    var body;
+  function readUserSummaryItem(apiRoot, listName, userKey, success, error) {
+    var title = escapeListTitle(listName);
+    var key = escapeODataValue(userKey);
+    var url = apiRoot + "/web/lists/getbytitle('" + title + "')/items" +
+      "?$top=2&$filter=Title%20eq%20'" + encodeURIComponent(key).replace(/%27/g, "''") + "'" +
+      "&$select=Id,Title,EncryptedPayload,SchemaVersion";
 
-    if (!normalizeRoot(config.WEB_ROOT) || !listName) { error(); return; }
-    body = {
-      "Title": makeEventKey(),
+    xhr("GET", url, { "Accept": "application/json;odata=verbose" }, null, function (req) {
+      var data;
+      var items;
+      try {
+        data = parseJson(req);
+        items = data && data.d && data.d.results ? data.d.results : [];
+        success(items.length ? items[0] : null);
+      } catch (e) { error(req); }
+    }, error);
+  }
+
+  function saveUserSummary(apiRoot, listName, item, userKey, encrypted, success, error) {
+    var body = {
       "EncryptedPayload": encrypted,
-      "SchemaVersion": 1
+      "SchemaVersion": SUMMARY_SCHEMA_VERSION
     };
+    if (item) {
+      updateItem(apiRoot, listName, item.Id, body, success, error);
+      return;
+    }
+    body.Title = userKey;
     writeItem(apiRoot, listName, body, success, error);
   }
 
-  function recordSessionStart(config) {
-    var apiRoot = normalizeRoot(config.WEB_ROOT) + "/_api";
-    var payload;
-
-    if (!normalizeRoot(config.WEB_ROOT) || !trim(config.USER_EVENT_LIST)) {
-      return;
+  function detectSelectedMode() {
+    var selected;
+    try {
+      selected = document.querySelector ? document.querySelector('input[name="mode"]:checked') : null;
+      return selected ? String(selected.value || "") : "";
+    } catch (e) {
+      return "";
     }
+  }
 
-    readCurrentUser(apiRoot, function (user) {
-      payload = {
-        "eventType": "session_start",
-        "userId": String(user.Id),
-        "lastAccessUtc": new Date().toISOString()
-      };
-      encryptPayload(payload, function (encrypted) {
-        writeSessionEvent(config, encrypted, function () {
-          incrementTotal(config, function (next) {
-            setValue(formatNumber(next));
-          }, function () {
-            // The encrypted event is already stored; only the display refresh failed.
-          });
-        }, function () {
-          setDisconnected();
-        });
-      }, function () {
-        setDisconnected();
-      });
+  function incrementTotalOnly(config) {
+    incrementTotal(config, function (next) {
+      setValue(formatNumber(next));
     }, function () {
       setDisconnected();
     });
+  }
+
+  function recordQuestionStart(config, mode) {
+    var webRoot = normalizeRoot(config.WEB_ROOT);
+    var apiRoot = webRoot + "/_api";
+    var listName = trim(config.USER_EVENT_LIST || "stiuseraccess");
+
+    if (!webRoot || !listName) { return; }
+    if (mode === "browse") {
+      incrementTotalOnly(config);
+      return;
+    }
+    if (mode !== "fourCorrect" && mode !== "fourWrong" && mode !== "trueFalse") { return; }
+
+    readCurrentUser(apiRoot, function (user) {
+      makeUserKey(user.Id, function (userKey) {
+        readUserSummaryItem(apiRoot, listName, userKey, function (item) {
+          function saveWithCount(currentCount) {
+            var payload = {
+              "eventType": "question_start_summary",
+              "userId": String(user.Id),
+              "questionStartCount": currentCount + 1,
+              "lastQuestionStartUtc": new Date().toISOString()
+            };
+            encryptPayload(payload, function (encrypted) {
+              saveUserSummary(apiRoot, listName, item, userKey, encrypted, function () {
+                incrementTotal(config, function (next) {
+                  setValue(formatNumber(next));
+                }, function () {});
+              }, function () { setDisconnected(); });
+            }, function () { setDisconnected(); });
+          }
+
+          if (!item) {
+            saveWithCount(0);
+            return;
+          }
+
+          if (parseInt(item.SchemaVersion, 10) !== SUMMARY_SCHEMA_VERSION) {
+            setDisconnected();
+            return;
+          }
+
+          decryptPayload(item.EncryptedPayload, function (payload) {
+            var count;
+            if (!payload || String(payload.userId) !== String(user.Id) ||
+                payload.eventType !== "question_start_summary") {
+              setDisconnected();
+              return;
+            }
+            count = parseInt(payload.questionStartCount, 10);
+            if (isNaN(count) || count < 0) { count = 0; }
+            saveWithCount(count);
+          }, function () { setDisconnected(); });
+        }, function () { setDisconnected(); });
+      }, function () { setDisconnected(); });
+    }, function () { setDisconnected(); });
   }
 
   function loadConfig(callback) {
@@ -456,14 +551,12 @@
     configWaiters.push(callback);
     if (loadingConfig) { return; }
     loadingConfig = true;
-    xhr("GET", CONFIG_PATH + "?v=1", null, null, function (req) {
+    xhr("GET", CONFIG_PATH + "?v=2", null, null, function (req) {
       var config;
       try {
         config = parseConfig(req.responseText);
         loadedConfig = config;
-      } catch (e) {
-        loadedConfig = null;
-      }
+      } catch (e) { loadedConfig = null; }
       loadingConfig = false;
       for (i = 0; i < configWaiters.length; i += 1) { configWaiters[i](loadedConfig); }
       configWaiters = [];
@@ -480,15 +573,12 @@
     if (!webRoot || !listName) { setDisconnected(); return; }
     readTotal(webRoot + "/_api", listName, function (total, current) {
       setValue(formatNumber(current));
-    }, function () {
-      setDisconnected();
-    });
+    }, function () { setDisconnected(); });
   }
 
   function init() {
     if (started) { return; }
     started = true;
-
     try {
       loadQuestionMetaGuard();
       addStyle();
@@ -497,26 +587,20 @@
       loadConfig(function (config) {
         if (config) { refreshDisplay(config); }
       });
-    } catch (e) {
-      setDisconnected();
-    }
+    } catch (e) { setDisconnected(); }
   }
 
   root.STIAccessCounter = {
-    recordSessionStart: function () {
+    recordSessionStart: function (mode) {
+      var resolvedMode = mode || detectSelectedMode();
       loadConfig(function (config) {
-        if (config) { recordSessionStart(config); }
+        if (config) { recordQuestionStart(config, resolvedMode); }
       });
     }
   };
 
   if (document.readyState === "loading") {
-    if (root.addEventListener) {
-      root.addEventListener("DOMContentLoaded", init, false);
-    } else if (root.attachEvent) {
-      root.attachEvent("onload", init);
-    }
-  } else {
-    init();
-  }
+    if (root.addEventListener) { root.addEventListener("DOMContentLoaded", init, false); }
+    else if (root.attachEvent) { root.attachEvent("onload", init); }
+  } else { init(); }
 }(this));

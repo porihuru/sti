@@ -15,8 +15,11 @@
   var loadedConfig = null;
   var loadingConfig = false;
   var configWaiters = [];
-  var homeObserver = null;
+  var viewObserver = null;
   var homeWasActive = false;
+  var learnWasActive = false;
+  var totalQueue = [];
+  var totalBusy = false;
 
   if (!document) { return; }
 
@@ -482,45 +485,74 @@
     }
   }
 
-  function incrementTotalOnly(config) {
+  function runNextTotalIncrement() {
+    var config;
+    if (totalBusy || !totalQueue.length) { return; }
+    totalBusy = true;
+    config = totalQueue.shift();
     incrementTotal(config, function (next) {
       setValue(formatNumber(next));
+      totalBusy = false;
+      runNextTotalIncrement();
     }, function () {
       setDisconnected();
+      totalBusy = false;
+      runNextTotalIncrement();
     });
+  }
+
+  function incrementTotalOnly(config) {
+    totalQueue.push(config);
+    runNextTotalIncrement();
   }
 
   function isViewActive(view) {
     return !!(view && (" " + view.className + " ").indexOf(" active ") >= 0);
   }
 
-  function installHomeTracking(config) {
+  function installViewTracking(config) {
     var home = document.getElementById("homeView");
+    var learn = document.getElementById("learnView");
 
-    if (!home) {
+    if (!home && !learn) {
       refreshDisplay(config);
       return;
     }
 
     homeWasActive = isViewActive(home);
-    if (homeWasActive) {
+    learnWasActive = isViewActive(learn);
+
+    if (homeWasActive || learnWasActive) {
       incrementTotalOnly(config);
     } else {
       refreshDisplay(config);
     }
 
-    if (root.MutationObserver && !homeObserver) {
-      homeObserver = new root.MutationObserver(function () {
-        var active = isViewActive(home);
-        if (active && !homeWasActive) {
+    if (root.MutationObserver && !viewObserver) {
+      viewObserver = new root.MutationObserver(function () {
+        var homeActive = isViewActive(home);
+        var learnActive = isViewActive(learn);
+
+        if ((homeActive && !homeWasActive) || (learnActive && !learnWasActive)) {
           incrementTotalOnly(config);
         }
-        homeWasActive = active;
+
+        homeWasActive = homeActive;
+        learnWasActive = learnActive;
       });
-      homeObserver.observe(home, {
-        attributes: true,
-        attributeFilter: ["class"]
-      });
+
+      if (home) {
+        viewObserver.observe(home, {
+          attributes: true,
+          attributeFilter: ["class"]
+        });
+      }
+      if (learn) {
+        viewObserver.observe(learn, {
+          attributes: true,
+          attributeFilter: ["class"]
+        });
+      }
     }
   }
 
@@ -532,10 +564,8 @@
     if (!webRoot) { return; }
     if (mode !== "browse" && mode !== "fourCorrect" && mode !== "fourWrong" && mode !== "trueFalse") { return; }
 
-    // Total ACCESS is independent from the encrypted per-user summary.
-    // Home, quiz starts and browse starts all count as one access event.
-    incrementTotalOnly(config);
-
+    // Total ACCESS is counted from actual home/learn view transitions.
+    // This prevents missed or duplicate total counts caused by async helper timing.
     if (mode === "browse") { return; }
     if (!listName) { return; }
 
@@ -551,7 +581,7 @@
             };
             encryptPayload(payload, function (encrypted) {
               saveUserSummary(apiRoot, listName, item, userKey, encrypted, function () {
-                // The total ACCESS count was already updated independently.
+                // Encrypted per-user summary saved independently from total ACCESS.
               }, function () {});
             }, function () {});
           }
@@ -620,7 +650,7 @@
       if (!createDisplay()) { return; }
       setDisconnected();
       loadConfig(function (config) {
-        if (config) { installHomeTracking(config); }
+        if (config) { installViewTracking(config); }
       });
     } catch (e) { setDisconnected(); }
   }

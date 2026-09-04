@@ -15,6 +15,8 @@
   var loadedConfig = null;
   var loadingConfig = false;
   var configWaiters = [];
+  var homeObserver = null;
+  var homeWasActive = false;
 
   if (!document) { return; }
 
@@ -488,17 +490,54 @@
     });
   }
 
+  function isViewActive(view) {
+    return !!(view && (" " + view.className + " ").indexOf(" active ") >= 0);
+  }
+
+  function installHomeTracking(config) {
+    var home = document.getElementById("homeView");
+
+    if (!home) {
+      refreshDisplay(config);
+      return;
+    }
+
+    homeWasActive = isViewActive(home);
+    if (homeWasActive) {
+      incrementTotalOnly(config);
+    } else {
+      refreshDisplay(config);
+    }
+
+    if (root.MutationObserver && !homeObserver) {
+      homeObserver = new root.MutationObserver(function () {
+        var active = isViewActive(home);
+        if (active && !homeWasActive) {
+          incrementTotalOnly(config);
+        }
+        homeWasActive = active;
+      });
+      homeObserver.observe(home, {
+        attributes: true,
+        attributeFilter: ["class"]
+      });
+    }
+  }
+
   function recordQuestionStart(config, mode) {
     var webRoot = normalizeRoot(config.WEB_ROOT);
     var apiRoot = webRoot + "/_api";
     var listName = trim(config.USER_EVENT_LIST || "stiuseraccess");
 
-    if (!webRoot || !listName) { return; }
-    if (mode === "browse") {
-      incrementTotalOnly(config);
-      return;
-    }
-    if (mode !== "fourCorrect" && mode !== "fourWrong" && mode !== "trueFalse") { return; }
+    if (!webRoot) { return; }
+    if (mode !== "browse" && mode !== "fourCorrect" && mode !== "fourWrong" && mode !== "trueFalse") { return; }
+
+    // Total ACCESS is independent from the encrypted per-user summary.
+    // Home, quiz starts and browse starts all count as one access event.
+    incrementTotalOnly(config);
+
+    if (mode === "browse") { return; }
+    if (!listName) { return; }
 
     readCurrentUser(apiRoot, function (user) {
       makeUserKey(user.Id, function (userKey) {
@@ -512,11 +551,9 @@
             };
             encryptPayload(payload, function (encrypted) {
               saveUserSummary(apiRoot, listName, item, userKey, encrypted, function () {
-                incrementTotal(config, function (next) {
-                  setValue(formatNumber(next));
-                }, function () {});
-              }, function () { setDisconnected(); });
-            }, function () { setDisconnected(); });
+                // The total ACCESS count was already updated independently.
+              }, function () {});
+            }, function () {});
           }
 
           if (!item) {
@@ -525,7 +562,6 @@
           }
 
           if (parseInt(item.SchemaVersion, 10) !== SUMMARY_SCHEMA_VERSION) {
-            setDisconnected();
             return;
           }
 
@@ -533,16 +569,15 @@
             var count;
             if (!payload || String(payload.userId) !== String(user.Id) ||
                 payload.eventType !== "question_start_summary") {
-              setDisconnected();
               return;
             }
             count = parseInt(payload.questionStartCount, 10);
             if (isNaN(count) || count < 0) { count = 0; }
             saveWithCount(count);
-          }, function () { setDisconnected(); });
-        }, function () { setDisconnected(); });
-      }, function () { setDisconnected(); });
-    }, function () { setDisconnected(); });
+          }, function () {});
+        }, function () {});
+      }, function () {});
+    }, function () {});
   }
 
   function loadConfig(callback) {
@@ -585,7 +620,7 @@
       if (!createDisplay()) { return; }
       setDisconnected();
       loadConfig(function (config) {
-        if (config) { refreshDisplay(config); }
+        if (config) { installHomeTracking(config); }
       });
     } catch (e) { setDisconnected(); }
   }

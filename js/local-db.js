@@ -137,7 +137,6 @@
     var input;
     var list;
     var originalPicker;
-
     if (!document || !root.addEventListener) { return; }
     input = document.getElementById("editCategory1");
     if (!input) { return; }
@@ -276,7 +275,7 @@
       script = document.createElement("script");
       script.id = "stiAccessCounterScript";
       script.type = "text/javascript";
-      script.src = "js/accesscounter.js";
+      script.src = "js/accesscounter.js?v=4";
       script.async = true;
       script.onerror = function () {
         // Counter loading failures must never affect the main STI application.

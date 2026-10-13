@@ -462,6 +462,7 @@
     byId("progressText").textContent = progress + " / " + session.rows.length;
     byId("progressBar").style.width = Math.round(progress / session.rows.length * 100) + "%";
     byId("browsePrintButton").hidden = session.config.mode !== "browse";
+    byId("browseCompactPrintButton").hidden = session.config.mode !== "browse";
     if (learnView) {
       learnView.classList.remove("four-choice-layout");
       learnView.classList.remove("four-choice-session");
@@ -1119,9 +1120,44 @@
     window.setTimeout(cleanupPrintMode, 1000);
   }
 
+  function renderBrowseCompactPrintDocument() {
+    var session = state.session;
+    var container = byId("browsePrintDocument");
+    var row;
+    var i;
+
+    clear(container);
+    for (i = 0; i < session.rows.length; i += 1) {
+      row = session.rows[i];
+      container.appendChild(element("p", "browse-compact-law", row.original));
+    }
+  }
+
+  function printBrowseCompactRows() {
+    var session = state.session;
+    if (!session || session.config.mode !== "browse" || !session.rows.length) {
+      showToast("印刷する条文がありません。");
+      return;
+    }
+
+    cleanupPrintMode();
+    renderBrowseCompactPrintDocument();
+    printReturnTitle = document.title;
+    document.title = "NAF-CSM_条文ぎゅうぎゅう印刷_" + STILocalDb.dateStamp();
+
+    // Keep the binding margin on the left, and use the printable area as fully as possible elsewhere.
+    byId("dynamicPrintPageStyle").textContent =
+      "@page { size: A4 portrait; margin: 3mm 3mm 3mm 25mm; }";
+
+    document.body.classList.add("print-browse-compact");
+    window.print();
+    window.setTimeout(cleanupPrintMode, 1000);
+  }
+
   function cleanupPrintMode() {
     document.body.classList.remove("print-result");
     document.body.classList.remove("print-browse");
+    document.body.classList.remove("print-browse-compact");
     byId("dynamicPrintPageStyle").textContent = "";
     if (printReturnTitle !== null) {
       document.title = printReturnTitle;
@@ -1640,6 +1676,7 @@
     byId("quitButton").addEventListener("click", quitSession);
     byId("printButton").addEventListener("click", printResults);
     byId("browsePrintButton").addEventListener("click", printBrowseRows);
+    byId("browseCompactPrintButton").addEventListener("click", printBrowseCompactRows);
     byId("retryButton").addEventListener("click", function () {
       if (state.lastConfig) { startSession(state.lastConfig); }
     });

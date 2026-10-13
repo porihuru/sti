@@ -6,6 +6,31 @@ main { width: 100%; margin: 0; }
 .view { display: none !important; padding: 0; }
 body.print-result #resultView { display: block !important; }
 body.print-browse #browsePrintDocument { display: block !important; }
+body.print-browse-compact #browsePrintDocument {
+  display: block !important;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+body.print-browse-compact .browse-compact-law {
+  margin: 0 0 0.45mm;
+  padding: 0;
+  color: #000;
+  white-space: pre-wrap;
+  overflow-wrap: normal;
+  word-wrap: break-word;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", "MS Mincho", serif;
+  font-size: 6.5pt;
+  font-weight: 400;
+  line-height: 1.03;
+  letter-spacing: -0.08em;
+  text-indent: 0;
+  orphans: 1;
+  widows: 1;
+  break-inside: auto;
+  page-break-inside: auto;
+}
+body.print-browse-compact .browse-compact-law:last-child { margin-bottom: 0; }
 .report-header { display: block; margin-bottom: 8mm; }
 .report-header h1 { font-size: 22pt; }
 .result-summary, .report-conditions, .result-details { border: 1px solid #777; border-radius: 0; box-shadow: none; }

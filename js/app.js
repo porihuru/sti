@@ -1133,13 +1133,38 @@
     }
   }
 
-  function printBrowseCompactRows() {
+  function openCompactPrintSizeDialog() {
     var session = state.session;
+    var modal = byId("compactPrintSizeModal");
+    var select = byId("compactPrintFontSize");
+
     if (!session || session.config.mode !== "browse" || !session.rows.length) {
       showToast("印刷する条文がありません。");
       return;
     }
+    if (!modal || !select) { return; }
 
+    modal.hidden = false;
+    if (select.focus) { select.focus(); }
+  }
+
+  function closeCompactPrintSizeDialog() {
+    var modal = byId("compactPrintSizeModal");
+    if (modal) { modal.hidden = true; }
+  }
+
+  function printBrowseCompactRows() {
+    var session = state.session;
+    var select = byId("compactPrintFontSize");
+    var fontSize = select ? parseFloat(select.value) : 8.1;
+
+    if (!session || session.config.mode !== "browse" || !session.rows.length) {
+      showToast("印刷する条文がありません。");
+      return;
+    }
+    if (isNaN(fontSize) || fontSize < 6.5 || fontSize > 12) { fontSize = 8.1; }
+
+    closeCompactPrintSizeDialog();
     cleanupPrintMode();
     renderBrowseCompactPrintDocument();
     printReturnTitle = document.title;
@@ -1147,7 +1172,8 @@
 
     // Keep the binding margin on the left, and use the printable area as fully as possible elsewhere.
     byId("dynamicPrintPageStyle").textContent =
-      "@page { size: A4 portrait; margin: 3mm 3mm 3mm 25mm; }";
+      "@page { size: A4 portrait; margin: 3mm 3mm 3mm 25mm; }" +
+      "body.print-browse-compact .browse-compact-law{font-size:" + fontSize + "pt!important;}";
 
     document.body.classList.add("print-browse-compact");
     window.print();
@@ -1676,7 +1702,12 @@
     byId("quitButton").addEventListener("click", quitSession);
     byId("printButton").addEventListener("click", printResults);
     byId("browsePrintButton").addEventListener("click", printBrowseRows);
-    byId("browseCompactPrintButton").addEventListener("click", printBrowseCompactRows);
+    byId("browseCompactPrintButton").addEventListener("click", openCompactPrintSizeDialog);
+    byId("compactPrintConfirmButton").addEventListener("click", printBrowseCompactRows);
+    byId("compactPrintCancelButton").addEventListener("click", closeCompactPrintSizeDialog);
+    byId("compactPrintSizeModal").addEventListener("click", function (event) {
+      if (event.target === byId("compactPrintSizeModal")) { closeCompactPrintSizeDialog(); }
+    });
     byId("retryButton").addEventListener("click", function () {
       if (state.lastConfig) { startSession(state.lastConfig); }
     });
@@ -1745,8 +1776,9 @@
       if (event.target === byId("lawModal")) { closeLawModal(); }
     });
     document.addEventListener("keydown", function (event) {
-      if ((event.key === "Escape" || event.keyCode === 27) && !byId("lawModal").hidden) {
-        closeLawModal();
+      if (event.key === "Escape" || event.keyCode === 27) {
+        if (!byId("lawModal").hidden) { closeLawModal(); }
+        if (!byId("compactPrintSizeModal").hidden) { closeCompactPrintSizeDialog(); }
       }
     });
     window.addEventListener("afterprint", cleanupPrintMode);
